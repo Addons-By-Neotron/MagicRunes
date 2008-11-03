@@ -1,0 +1,21 @@
+## Interface: 30000
+## Title: Magic Runes
+## Notes: Deathknight Rune Display
+## Author: NeoTron
+## Version: 1.0
+## DefaultState: enabled
+## X-Category: Raid
+## X-eMail: neotron@gmail.com
+## LoadOnDemand: 1
+## X-LoadOn-Class: DEATHKNIGHT
+
+## OptionalDeps: Ace3, LibBars-1.0, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets
+## X-Embeds: Ace3, LibBars-1.0, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets
+## SavedVariables: MagicRunesDB
+
+# Library files
+embeds.xml
+Locales.xml
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+MagicRunes.lua
+
