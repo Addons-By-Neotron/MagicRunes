@@ -11,6 +11,7 @@
 	<Include file="Libs\AceEvent-3.0\AceEvent-3.0.xml"/>
 	<Include file="Libs\AceTimer-3.0\AceTimer-3.0.xml"/>
 	<Include file="Libs\AceLocale-3.0\AceLocale-3.0.xml"/>	
+	<Include file="Libs\AceGUI-3.0\AceGUI-3.0.xml"/>
 	<Include file="Libs\LibBars-1.0\lib.xml"/>
 	<Include file="Libs\LibSharedMedia-3.0\lib.xml"/>
 	<Include file="Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml"/>
