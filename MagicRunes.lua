@@ -63,16 +63,16 @@ end
 
 local addonEnabled = false
 local db, isInGroup, inCombat
-local bars  = nil
+bars  = nil
 local runebars = {}
 local options
 local numFilling = 0
 
 local runeInfo = {
-   { "Blood",  "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood"}, 
-   { "Unholy", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy"};
-   { "Frost",  "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost"},
-   { "Death",  "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" }
+   { "Blood",  "B", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood"}, 
+   { "Unholy", "U", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy"};
+   { "Frost",  "F", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost"},
+   { "Death",  "D", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" }
 }
 
 local colors = {
@@ -84,15 +84,17 @@ local colors = {
 
 local defaults = {
    profile = {
+      orientation = 1,
       growup = false,
       font = "Friz Quadrata TT",
       locked = false,
       hideanchor = false,
       texture =  "Minimalist",
       maxbars = 20,
-      fontsize = 8,
-      width = 150,
-      height = 12,
+      fontsize = 14,
+      spacing = 1,
+      length = 250,
+      thickness = 25,
       fadebars = false,
       showTooltip = true,
       scale = 1.0,
@@ -102,7 +104,11 @@ local defaults = {
 local function GetRuneInfo(runeid)
    local type = GetRuneType(runeid)
    local info = runeInfo[type]
-   return info[1], info[2], type
+   if db.orientation == 1 or db.orientation == 3 then
+      return info[1], info[3], type, db.colors[info[1]]
+   else
+      return info[2], info[3], type, db.colors[info[1]]
+   end
 end
 
 local function SetColorOpt(arg, r, g, b, a)
@@ -113,10 +119,8 @@ local function SetColorOpt(arg, r, g, b, a)
    db.colors[color][4] = a
 
    for id = 1,6 do
-      local name = GetRuneInfo(id)
-      if name == color then 
-	 mod:SetBarColor(runebars[id], name)
-      end
+      local name, _, _, color = GetRuneInfo(id)
+      mod:SetBarColor(runebars[id], color)
    end
 end
 
@@ -134,6 +138,14 @@ function mod:OnInitialize()
    MagicRunesDB.point = nil
    db = self.db.profile
 
+   -- upgrade
+   if db.width then
+      db.thickness = db.height
+      db.length = db.width
+      db.width = nil
+      db.height = nil
+   end
+   
    if not db.colors then  db.colors = colors end
    
    if LDB then
@@ -181,19 +193,19 @@ end
 
 function mod:OnEnable()
    if not bars then
-      bars = self:NewBarGroup("Runed",nil,  db.width, db.height)
+      bars = self:NewBarGroup("Runes",nil,  db.length, db.thickness)
       bars:SetColorAt(1.00, 1, 1, 0, 1)
       bars:SetColorAt(0.00, 0.5, 0.5,0, 1)
       bars.RegisterCallback(self, "AnchorMoved")
 
       for id = 1, 6 do
-	 local name, icon, type = GetRuneInfo(id)
+	 local name, icon, type, color = GetRuneInfo(id)
 	 local bar = bars:NewCounterBar("MagicRunes:"..id, name, 10, 10, icon)
 	 bar:SetScript("OnEnter", Bar_OnEnter);
 	 bar:SetScript("OnLeave", Bar_OnLeave);
 	 bar.runeid = type
 	 bar:EnableMouse(true)
-	 mod:SetBarColor(bar, name)
+	 mod:SetBarColor(bar, color)
 	 runebars[id] = bar
       end
       bars:SetSortFunction(BarSortFunc_TimeRune)
@@ -301,7 +313,7 @@ do
 	       activeRunes[rune] = nil
 	    else
 	       bar.value = duration - remaining
-	       if remaining > 2.0 then
+	       if remaining > 2.0 or (db.orientation == 2 or db.orientation == 4) then
 		  bar.timerLabel:SetText(fmt("%.0f", remaining))
 	       else
 		  bar.timerLabel:SetText(fmt("%.1f", remaining))
@@ -342,8 +354,7 @@ function mod:AnchorMoved(cbk, group, button)
    db.point = { group:GetPoint() }
 end
 
-function mod:SetBarColor(bar, rune)
-   local color = db.colors[rune]
+function mod:SetBarColor(bar, color)
    bar:UnsetAllColors()
    bar:SetColorAt(1.0, color[1], color[2], color[3], color[4])
    if db.fadebars then
@@ -359,11 +370,11 @@ end
 
 function mod:RUNE_TYPE_UPDATE(_, rune)
    local bar = runebars[rune]
-   local name, icon, type = GetRuneInfo(rune)
-   bar:SetIcon(icon)
+   local name, icon, type, color = GetRuneInfo(rune)
    bar:SetLabel(name)
+   bar:SetIcon(icon)
    bar.runeid = type
-   mod:SetBarColor(runebars[rune], name)
+   mod:SetBarColor(runebars[rune], color)
    bars:SortBars()
 end
 
@@ -399,20 +410,22 @@ function mod:ApplyProfile()
    self:SetTexture()
    self:SetFont()
    self:SetSize()
+   self:SetOrientation(db.orientation)
    bars:SetScale(db.scale)
+   bars:SetSpacing(db.spacing)
    bars:SortBars()
 end
 
-function mod:SetSize()
-   bars:SetWidth(db.width)
-   bars:SetHeight(db.height)
-   bars.height = db.height
-   bars.width = db.width
-   for id, bar in pairs(runebars) do
-      bar:SetHeight(db.height)
-      bar.icon:SetHeight(db.height)
-      bar.icon:SetWidth(db.height)
+function mod:SetOrientation(orientation)
+   bars:SetOrientation(orientation)
+   for id = 1,6 do
+      runebars[id]:SetLabel(GetRuneInfo(id))
    end
+end
+
+function mod:SetSize()
+   bars:SetThickness(db.thickness)
+   bars:SetLength(db.length)
    bars:SortBars()
 end
 
@@ -455,31 +468,20 @@ options = {
 	 },
 	 ["lock"] = {
 	    type = "toggle",
-	    name = "Lock Magic Targets bar positions.",
+	    name = "Lock bar positions",
 	    width = "full",
 	    set = function() mod:ToggleLocked() end,
 	    get = function() return db.locked end,
 	 },
 	 ["grow"] = {
 	    type = "toggle",
-	    name = "Grow bars upwards.",
+	    name = "Reverse growth direction",
 	    width = "full",
 	    set = function()
 		     db.growup = not db.growup
 		     bars:ReverseGrowth(db.growup)
-		     mod:info("Growing bars %s.", db.growup and "up" or "down")
 		  end,
 	    get = function() return db.growup end
-	 },
-	 ["fadebars"] = {
-	    type = "toggle",
-	    name = "Fade bars as health decreases.",
-	    width = "full",
-	    set = function()
-		     db.fadebars = not db.fadebars
-		     mod:info("Bar fading is %s.", db.fadebars and "enabled" or "disabled") 
-		  end,
-	    get = function() return db.fadebars end
 	 },
 	 ["hideanchor"] = {
 	    type = "toggle",
@@ -505,6 +507,17 @@ options = {
       set = SetColorOpt,
       get = GetColorOpt,
       args = {
+	 fadebars = {
+	    type = "toggle",
+	    name = "Fade bar color as they increase",
+	    width = "full",
+	    set = function()
+		     db.fadebars = not db.fadebars
+		     mod:info("Bar fading is %s.", db.fadebars and "enabled" or "disabled") 
+		  end,
+	    get = function() return db.fadebars end,
+	    order = 0
+	 },
 	 Blood = {
 	    type = "color",
 	    name = "Blood",
@@ -533,33 +546,58 @@ options = {
    },
    sizing = {
       type = "group",
-      name = "Bar Size",
+      name = "Bar Layout",
       order = 4,
       args = {
-	 height = {
+	 length = {
 	    type = "range",
-	    name = "Bar Height",
+	    name = "Length",
 	    width = "full",
-	    min = 1, max = 50, step = 1,
-	    set = function(_,val) db.height = val mod:SetSize() end,
-	    get = function() return db.height end
+	    min = 100, max = 500, step = 0.01,
+	    set = function(_,val) db.length = val mod:SetSize() end,
+	    get = function() return db.length end,
+	    order = 1
 	 }, 
-	 width = {
+	 thickness = {
 	    type = "range",
-	    name = "Bar Width",
+	    name = "Thickness",
 	    width = "full",
-	    min = 1, max = 300, step = 1,
-	    set = function(_,val) db.width = val mod:SetSize() end,
-	    get = function() return db.width end
+	    min = 1, max = 150, step = 0.01,
+	    set = function(_,val) db.thickness = val mod:SetSize() end,
+	    get = function() return db.thickness end,
+	    order = 2
+	 }, 
+	 spacing = {
+	    type = "range",
+	    name = "Spacing",
+	    width = "full",
+	    min = 0, max = 20, step = 0.01,
+	    set = function(_,val) db.spacing = val bars:SetSpacing(val) end,
+	    get = function() return db.spacing end, 
+	    order = 3
 	 }, 
 	 scale = {
 	    type = "range",
-	    name = "Scale Factor",
+	    name = "Scale",
 	    width = "full",
 	    min = 0.01, max = 5, step = 0.05,
 	    set = function(_,val) db.scale = val bars:SetScale(val) end,
-	    get = function() return db.scale end
-	 }, 
+	    get = function() return db.scale end,
+	    order = 4
+	 },
+	 orientation = {
+	    type = "select",
+	    name = "Orientation",
+	    values = {
+	       "Horizontal, Left",
+	       "Vertical, Bottom",
+	       "Horizontal, Right",
+	       "Vertical, Top"
+	    },
+	    set = function(_,val) db.orientation = val mod:SetOrientation(val) end,
+	    get = function() return db.orientation end,
+	    order = 5,
+	 }
       }
    },
    looks = {
@@ -585,16 +623,17 @@ options = {
 	    values = AceGUIWidgetLSMlists.font, 
 	    get = function() return db.font  end,
 	    set = function(_,key) db.font = key  mod:SetFont() end,
-	    order = 1,
+	    order = 2,
 	 },
 	 fontsize = {
 	    order = 1, 
 	    type = "range",
+	    width="full",
 	    name = "Font size",
-	    min = 1, max = 30, step = 1,
+	    min = 1, max = 30, step = 0.01,
 	    set = function(_,val) db.fontsize = val mod:SetFont() end,
 	    get = function() return db.fontsize end,
-	    order = 2
+	    order = 1
 	 },
       },
    },
@@ -619,7 +658,7 @@ end
 function mod:SetupOptions()
    mod.main = mod:OptReg("Magic Runes", options.general)
    mod:OptReg(": Profiles", options.profile, "Profiles")
-   mod:OptReg(": bar sizing", options.sizing, "Bar Sizing")
+   mod:OptReg(": bar sizing", options.sizing, "Bar Layout")
    mod:OptReg(": bar colors", options.colors, "Bar Colors")
    mod.text = mod:OptReg(": Font & Texture", options.looks, "Font & Texture")
    
