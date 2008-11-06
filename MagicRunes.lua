@@ -91,7 +91,7 @@ end
 local addonEnabled = false
 local db, isInGroup, inCombat
 local bars 
-local runebars = {}
+runebars = {}
 
 if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
    local runecache = { }
@@ -107,7 +107,7 @@ if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
    function mod:TriggerRune(id, ready)
       if not ready then 
 	 runecache[id] = {
-	    GetTime(), 10, false
+	    GetTime()-random(3), 10, false
 	 }
 	 if mod.debug then mod:debug("Starting rune cooldown: "..id) end
       else
@@ -161,6 +161,7 @@ local defaults = {
       thickness = 25,
       showTooltip = true,
       scale = 1.0,
+      iconscale = 1.0
    }
 }
 
@@ -347,6 +348,8 @@ function mod:OnEnable()
    mod:RegisterEvent("RUNE_TYPE_UPDATE")
 end
 
+-- We mess around with bars so restore them to a prestine state
+-- Yes, this is evil and all but... so much fun... muahahaha
 function mod:ReleaseBar(bar)
    bar.barId = nil
    bar.type  = nil
@@ -355,6 +358,9 @@ function mod:ReleaseBar(bar)
    bar:SetScript("OnEnter", nil)
    bar:SetScript("OnLeave", nil)
    bar:EnableMouse(false)
+   bar:SetValue(0)
+   bar:SetScale(1)
+   bar.spark:SetAlpha(1)
    bars:RemoveBar(bar.name)
 end
 
@@ -367,12 +373,12 @@ function mod:CreateBars()
    if not db.bars then return end
    
    for id,data in ipairs(db.bars) do
-      local bar = bars:NewCounterBar("MagicRunes:"..id, "", 10, 10)
-      
-      bar:SetScript("OnEnter", Bar_OnEnter);
-      bar:SetScript("OnLeave", Bar_OnLeave);
+      local bar = bars:NewCounterBar("MagicRunes:"..id, "", db.showRemaining and 0 or 10, 10)
+--      bar:SetScript("OnEnter", Bar_OnEnter);
+--      bar:SetScript("OnLeave", Bar_OnLeave);
       bar:EnableMouse(true)
       bar.barId  = id
+      bar:SetFrameLevel(id)
       runebars[id] = bar
       
       if data.type == mod.RUNE_BAR then
@@ -388,6 +394,12 @@ function mod:CreateBars()
    end
 end
 
+function mod:SetIconScale(val)
+   for _,bar in ipairs(runebars) do
+      bar.icon:SetWidth(db.thickness * val)
+      bar.icon:SetHeight(db.thickness * val)
+   end
+end
 function mod:SetTexture()
    bars:SetTexture(media:Fetch("statusbar", db.texture))
 end
@@ -398,10 +410,17 @@ end
 
 function mod:UpdateIcons()
    for id, data in ipairs(db.bars) do
-      if db.showicon then
-	 runebars[id]:ShowIcon()
+      local bar = runebars[id]
+      if db.showicon and db.animateIcons then
+	 bar.spark:SetAlpha(0)
       else
-	 runebars[id]:HideIcon()
+	 bar.spark:SetAlpha(1)
+      end
+
+      if db.showicon then
+	 bar:ShowIcon()
+      else
+	 bar:HideIcon()
       end
    end
 end
@@ -488,6 +507,28 @@ do
    
    local runeData = { {}, {}, {}, {}, {}, {} }
    local now, updated, data, bar
+
+   function mod:UpdateRemainingTimes()
+      for id,barData in ipairs(db.bars) do
+	 bar = runebars[id]
+	 if barData.type == mod.RUNE_BAR then
+	    data = runeData[barData.runeid]
+	    if data.remaining <= 0 then
+	       if db.showRemaining then
+		  bar:SetValue(0)
+	       else
+		  bar:SetValue(bar.maxValue)
+	       end
+	    else
+	       if db.showRemaining then
+		  bar:SetValue(data.remaining)
+	       else
+		  bar:SetValue(data.value)
+	       end
+	    end
+	 end
+      end
+   end
    
    function mod.UpdateBars()
       now = GetTime()
@@ -510,13 +551,17 @@ do
 	       mod:SetBarColor(bar, color)
 	    end
 
-	    if data.ready or data.remaining == 0 then
+	    if data.ready or data.remaining <= 0 then
 	       -- DEBUG FOR NON-DK CLASSES
 	       if mod.TriggerRune and not data.ready then 
 		  mod:TriggerRune(barData.runeid, true)
 	       end
 	       if bar.notReady then
-		  bar:SetValue(bar.maxValue)
+		  if db.showRemaining then
+		     bar:SetValue(0)
+		  else
+		     bar:SetValue(bar.maxValue)
+		  end
 		  bar.timerLabel:SetText("")
 		  bar.notReady = nil
 	       end
@@ -526,14 +571,18 @@ do
 	    end
 	 end
       end
-      if db.sortMethod > 1 then 
-	 bars:SortBars()
+      if  db.sortmethod > 1 then 
+	 bars:SortBars()	
       end
    end
 
    
    function mod:SetBarValues()
-      bar.value = data.value
+      if db.showRemaining then
+	 bar.value = data.remaining
+      else
+	 bar.value = data.value
+      end
       bar:SetMaxValue(data.duration)
       if db.showtimer then
 	 if data.remaining == 0 then
@@ -642,10 +691,10 @@ function mod:ApplyProfile()
 
    mod:SetDefaultColors()
    mod:SetDefaultBars()
+   mod:CreateBars()
    mod:SetTexture()
    mod:SetFont()
    mod:SetSize()
-   mod:CreateBars()
    mod:SetOrientation(db.orientation)
 --   mod:SetupBarOptions(true)
    bars:SetSortFunction(sortFunctions[db.sortmethod])
@@ -670,14 +719,24 @@ function mod:SetOrientation(orientation)
    bars:SetOrientation(orientation)
    vertical = (orientation == 2 or orientation == 4)
    for id,data in ipairs(db.bars) do
+      local bar = runebars[id]
+      if db.showicon and db.animateIcons then
+	 bar.icon:ClearAllPoints()
+	 bar.icon:SetPoint("CENTER", bar.spark)
+	 bar.spark:SetAlpha(0)
+      else
+	 bar.spark:SetAlpha(1)
+      end
       mod:SetBarLabel(id, data)
    end
+   mod:SetIconScale(db.iconscale)
 end
 
 function mod:SetSize()
    bars:SetThickness(db.thickness)
    bars:SetLength(db.length)
    bars:SortBars()
+   mod:SetIconScale(db.iconscale)
 end
 
 function mod:OnProfileChanged(event, newdb)
@@ -721,6 +780,13 @@ options = {
 --	    name = "Show mouseover tooltip", 
 --	    get = function() return db.showTooltip end,
 --	 },
+	 showRemaining = {
+	    type = "toggle",
+	    name = "Show remaining time",
+	    desc = "Instead showing the time elapsed on the cooldown, show the time remaining. This means that the bars will shrink as the cooldown lowers instead of grow.",
+	    width = "full",
+	    set = function(_,val) db.showRemaining = val mod:UpdateRemainingTimes() end
+	 },
 	 locked = {
 	    type = "toggle",
 	    name = "Lock bar positions",
@@ -824,16 +890,24 @@ options = {
 	    type = "range",
 	    name = "Spacing",
 	    width = "full",
-	    min = 0, max = 20, step = 0.01,
+	    min = -30, max = 30, step = 0.01,
 	    set = function(_,val) db.spacing = val bars:SetSpacing(val) end,
 	    order = 3
 	 }, 
 	 scale = {
 	    type = "range",
-	    name = "Scale",
+	    name = "Overall Scale",
 	    width = "full",
 	    min = 0.01, max = 5, step = 0.01,
 	    set = function(_,val) db.scale = val bars:SetScale(val) end,
+	    order = 4
+	 },
+	 iconscale = {
+	    type = "range",
+	    name = "Icon Scale",
+	    width = "full",
+	    min = 0.01, max = 50, step = 0.01,
+	    set = function(_,val) db.iconscale = val mod:SetIconScale(val) end,
 	    order = 4
 	 },
 	 orientation = {
@@ -857,7 +931,6 @@ options = {
 	    type = "toggle",
 	    name = "Show labels",
 	    set = function(_,val) db.showlabel = val mod:UpdateLabels() end,
-	    width = "full",
 	    order = 10,
 	    
 	 },
@@ -865,15 +938,21 @@ options = {
 	    type = "toggle",
 	    name = "Show timer",
 	    set = function(_,val) db.showtimer = val mod:UpdateLabels() end,
-	    width = "full",
 	    order = 20,
 	 },
 	 showicon = {
 	    type = "toggle",
 	    name = "Show icons",
 	    set = function(_,val) db.showicon = val mod:UpdateIcons() end,
-	    width = "full",
 	    order = 30
+	 },
+	 animateIcons = {
+	    type = "toggle",
+	    name = "Animate Icons",
+	    desc = "If enabled, the icons will move with the bar. If the bar texture is hidden, you'll get a display simply showing the cooldown using icons.",
+	    set = function(_, val) db.animateIcons = val mod:SetOrientation(db.orientation) end,
+	    order = 30,
+	    disabled = function() return not db.showicon end
 	 },
 	 header3 = {
 	    type = "header",
