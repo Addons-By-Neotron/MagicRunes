@@ -42,10 +42,10 @@ local currentbars
 
 local InCombatLockdown = InCombatLockdown
 local fmt = string.format
-local tinsert = table.insert
-local tconcat = table.concat
-local tremove = table.remove
-local time = time
+local time = GetTime
+local max = max
+local GetRuneCooldown = GetRuneCooldown
+local GetRuneType = GetRuneType
 local type = type
 local pairs = pairs
 local min = min
@@ -55,24 +55,33 @@ local sort = sort
 local select = select
 local unpack = unpack
 local vertical 
+
 if Logger then
    Logger:Embed(MagicRunes)
 else
-   MagicRunes.info = function(self, ...) mod:Print(fmt(...)) end
+   -- Enable info messages
+   mod.info = function(self, ...) mod:Print(fmt(...)) end
+   mod.error = info
+   mod.warn = info
+   -- But disable debugging
+   mod.debug = function(self, ...) end
+   mod.trace = mod.debug
+   mod.spam = mod.debug
 end
 
 
 if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
    local runecache = { }
    local GRC = GetRuneCooldown
-   local function GetRuneCooldown(id)
-      if runecache[id] then
-	 return unpack(runecache[id])
-      else
-	 return GRC(id)
+   GetRuneCooldown =
+      function(id)
+	 if runecache[id] then
+	    return unpack(runecache[id])
+	 else
+	    return GRC(id)
+	 end
       end
-   end
-
+   
    function mod:TriggerRune(id, ready)
       if ready then 
 	 runecache[id] = {
@@ -148,12 +157,11 @@ local defaults = {
       orientation = 1,
       sortmethod = 1,
       font = "Friz Quadrata TT",
-      showlabel = true,
-      showtimer = true,
-      showicon = true,
-      hideanchor = true,
+      showLabel = true,
+      showTimer = true,
+      showIcon = true,
+      hideAnchor = true,
       texture =  "Minimalist",
-      maxbars = 20,
       displayType = mod.RUNE_DISPLAY,
       fontsize = 14,
       spacing = 1,
@@ -161,7 +169,7 @@ local defaults = {
       thickness = 25,
       showTooltip = true,
       scale = 1.0,
-      iconscale = 1.0
+      iconScale = 1.0
    }
 }
 
@@ -231,7 +239,6 @@ function mod:OnInitialize()
    self.db = LibStub("AceDB-3.0"):New("MagicRunesDB", defaults, "Default")
    self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
    self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileChanged")
-   self.db.RegisterCallback(self, "OnProfileDeleted","OnProfileChanged")
    self.db.RegisterCallback(self, "OnProfileReset", "OnProfileChanged")
    MagicRunesDB.point = nil
    db = self.db.profile
@@ -386,11 +393,11 @@ function mod:CreateBars()
 	 bar.type = type
 	 bar:SetIcon(icon) 
 	 bar:SetLabel(name) 
-	 if not db.showicon then bar:HideIcon() end
+	 if not db.showIcon then bar:HideIcon() end
 	 mod:SetBarColor(bar, color)
       end
-      if not db.showlabel then bar:HideLabel() end
-      if not db.showtimer then bar:HideTimerLabel() end
+      if not db.showLabel then bar:HideLabel() end
+      if not db.showTimer then bar:HideTimerLabel() end
    end
 end
 
@@ -411,13 +418,13 @@ end
 function mod:UpdateIcons()
    for id, data in ipairs(db.bars) do
       local bar = runebars[id]
-      if db.showicon and db.animateIcons then
+      if db.showIcon and db.animateIcons then
 	 bar.spark:SetAlpha(0)
       else
 	 bar.spark:SetAlpha(1)
       end
 
-      if db.showicon then
+      if db.showIcon then
 	 bar:ShowIcon()
       else
 	 bar:HideIcon()
@@ -506,7 +513,7 @@ do
    local activeRunes = {}
    
    local runeData = { {}, {}, {}, {}, {}, {} }
-   local now, updated, data, bar
+   local now, updated, data, bar 
 
    function mod:UpdateRemainingTimes()
       for id,barData in ipairs(db.bars) do
@@ -529,7 +536,7 @@ do
 	 end
       end
    end
-   
+
    function mod.UpdateBars()
       now = GetTime()
       for id = 1,6 do
@@ -566,32 +573,27 @@ do
 		  bar.notReady = nil
 	       end
 	    else
-	       mod:SetBarValues(bar, data) 
+	       if db.showRemaining then
+		  bar.value = data.remaining
+	       else
+		  bar.value = data.value
+	       end
+	       bar:SetMaxValue(data.duration)
+	       if db.showtimer then
+		  if data.remaining == 0 then
+		     bar.timerLabel:SetText("")
+		  elseif data.remaining > 2.0 or vertical then
+		     bar.timerLabel:SetText(fmt("%.0f", data.remaining))
+		  else
+		     bar.timerLabel:SetText(fmt("%.1f", data.remaining))
+		  end
+	       end
 	       bar.notReady = true
 	    end
 	 end
       end
       if  db.sortmethod > 1 then 
 	 bars:SortBars()	
-      end
-   end
-
-   
-   function mod:SetBarValues()
-      if db.showRemaining then
-	 bar.value = data.remaining
-      else
-	 bar.value = data.value
-      end
-      bar:SetMaxValue(data.duration)
-      if db.showtimer then
-	 if data.remaining == 0 then
-	    bar.timerLabel:SetText("")
-	 elseif data.remaining > 2.0 or vertical then
-	    bar.timerLabel:SetText(fmt("%.0f", data.remaining))
-	 else
-	    bar.timerLabel:SetText(fmt("%.1f", data.remaining))
-	 end
       end
    end
    
@@ -687,8 +689,9 @@ function mod:ApplyProfile()
    end
    bars:ReverseGrowth(db.growup)
    if db.locked then bars:Lock() else bars:Unlock() end
-   if db.hideanchor and db.locked then bars:HideAnchor() else bars:ShowAnchor() end
+   if db.hideAnchor and db.locked then bars:HideAnchor() else bars:ShowAnchor() end
 
+   bars:SetSortFunction(bars.NOOP)
    mod:SetDefaultColors()
    mod:SetDefaultBars()
    mod:CreateBars()
@@ -720,7 +723,7 @@ function mod:SetOrientation(orientation)
    vertical = (orientation == 2 or orientation == 4)
    for id,data in ipairs(db.bars) do
       local bar = runebars[id]
-      if db.showicon and db.animateIcons then
+      if db.showIcon and db.animateIcons then
 	 bar.icon:ClearAllPoints()
 	 bar.icon:SetPoint("CENTER", bar.spark)
 	 bar.spark:SetAlpha(0)
@@ -729,21 +732,19 @@ function mod:SetOrientation(orientation)
       end
       mod:SetBarLabel(id, data)
    end
-   mod:SetIconScale(db.iconscale)
+   mod:SetIconScale(db.iconScale)
 end
 
 function mod:SetSize()
    bars:SetThickness(db.thickness)
    bars:SetLength(db.length)
    bars:SortBars()
-   mod:SetIconScale(db.iconscale)
+   mod:SetIconScale(db.iconScale)
 end
 
 function mod:OnProfileChanged(event, newdb)
-   if event ~= "OnProfileDeleted" then
-      db = self.db.profile
-      mod:ApplyProfile()
-   end
+   db = self.db.profile
+   mod:ApplyProfile()
 end
 
 function mod:ToggleConfigDialog()
@@ -754,7 +755,7 @@ end
 function mod:ToggleLocked()
    db.locked = not db.locked
    if db.locked then bars:Lock() else bars:Unlock() end
-   if db.hideanchor then
+   if db.hideAnchor then
       -- Show anchor if we're unlocked but lock it again if we're locked
       if db.locked then bars:HideAnchor() else bars:ShowAnchor() end
    end
@@ -802,20 +803,38 @@ options = {
 		     bars:ReverseGrowth(db.growup)
 		  end,
 	 },
-	 hideanchor = {
+	 hideAnchor = {
 	    type = "toggle",
 	    name = "Hide anchor when bars are locked.",
 	    width = "full",	
 	    set = function()
-		     db.hideanchor = not db.hideanchor
-		     if db.locked and db.hideanchor then
+		     db.hideAnchor = not db.hideAnchor
+		     if db.locked and db.hideAnchor then
 			bars:HideAnchor()
 		     else
 			bars:ShowAnchor()
 		     end
-		     mod:info("The anchor will be %s when the bars are locked.", db.hideanchor and "hidden" or "shown") 
+		     mod:info("The anchor will be %s when the bars are locked.", db.hideAnchor and "hidden" or "shown") 
 		  end,
 	 },
+	 preset = {
+	    type = "select", 
+	    name = "Load Preset",
+	    desc = "Presets are primarily here to give you a few ideas on how you can configure the bars. Note that the presets do now change font, texture or color options. The global scale is also not changed.",
+	    values = "GetPresetList",
+	    width  = "full",
+	    order = 0,
+	    set = function(_, preset)
+		     if db.preset ~= preset then
+			db.preset = preset
+			for var,val in pairs(mod.presets[preset].data) do
+			   mod:debug("Setting %s to %s", var, tostring(val))
+			   db[var] = val
+			end
+			mod:ApplyProfile()
+		     end
+		  end
+	 }
       },
    },
    colors = {
@@ -902,12 +921,12 @@ options = {
 	    set = function(_,val) db.scale = val bars:SetScale(val) end,
 	    order = 4
 	 },
-	 iconscale = {
+	 iconScale = {
 	    type = "range",
 	    name = "Icon Scale",
 	    width = "full",
 	    min = 0.01, max = 50, step = 0.01,
-	    set = function(_,val) db.iconscale = val mod:SetIconScale(val) end,
+	    set = function(_,val) db.iconScale = val mod:SetIconScale(val) end,
 	    order = 4
 	 },
 	 orientation = {
@@ -940,10 +959,10 @@ options = {
 	    set = function(_,val) db.showtimer = val mod:UpdateLabels() end,
 	    order = 20,
 	 },
-	 showicon = {
+	 showIcon = {
 	    type = "toggle",
 	    name = "Show icons",
-	    set = function(_,val) db.showicon = val mod:UpdateIcons() end,
+	    set = function(_,val) db.showIcon = val mod:UpdateIcons() end,
 	    order = 30
 	 },
 	 animateIcons = {
@@ -952,7 +971,7 @@ options = {
 	    desc = "If enabled, the icons will move with the bar. If the bar texture is hidden, you'll get a display simply showing the cooldown using icons.",
 	    set = function(_, val) db.animateIcons = val mod:SetOrientation(db.orientation) end,
 	    order = 30,
-	    disabled = function() return not db.showicon end
+	    disabled = function() return not db.showIcon end
 	 },
 	 header3 = {
 	    type = "header",
@@ -1197,4 +1216,20 @@ end
 
 
 
-		  
+do
+   -- DEV FUNCTION FOR CREATING PRESETS
+   local presetParameters = {
+      "orientation", "showLabel", "showTimer", "showIcon",
+      "spacing", "length", "thickness", "iconScale",
+      "animateIcons", "showRemaining"
+   }
+   
+   function mod:SavePreset(name)
+      local presets = MagicRunesDB.presets or {}
+      presets[name] = {}
+      for _,param in ipairs(presetParameters) do
+	 presets[name][param] = db[param]
+      end
+      MagicRunesDB.presets = presets
+   end
+end
