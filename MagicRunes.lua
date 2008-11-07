@@ -268,10 +268,16 @@ function mod:OnInitialize()
 			      label = "Magic Runes",
 			      icon = "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death",
 			      tooltiptext = ("|cffffff00Left click|r to open the configuration screen.\n"..
+					     (mod.TriggerRune and "|cffffff00Middle click|r to emulate rune use.\n" or "")..
 					     "|cffffff00Right click|r to toggle the Magic Target window lock."), 
 			      OnClick = function(clickedframe, button)
 					   if button == "LeftButton" then
 					      mod:ToggleConfigDialog()
+					   elseif button == "MiddleButton" and
+					      mod.TriggerRune then
+					      for id = 1,6 do
+						 mod:TriggerRune(id)
+					      end
 					   elseif button == "RightButton" then
 					      mod:ToggleLocked()
 					   end
