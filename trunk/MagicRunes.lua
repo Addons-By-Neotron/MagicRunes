@@ -55,6 +55,8 @@ local sort = sort
 local select = select
 local unpack = unpack
 local vertical 
+local gcd = 1.5
+local flashTimer
 
 if Logger then
    Logger:Embed(MagicRunes)
@@ -69,37 +71,10 @@ else
    mod.spam = mod.debug
 end
 
-
-if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
-   local runecache = { }
-   local GRC = GetRuneCooldown
-   GetRuneCooldown =
-      function(id)
-	 if runecache[id] then
-	    return unpack(runecache[id])
-	 else
-	    return GRC(id)
-	 end
-      end
-   
-   function mod:TriggerRune(id, ready)
-      if ready then 
-	 runecache[id] = {
-	    GetTime(), 10, false
-	 }
-	 if mod.debug then mod:debug("Starting rune cooldown: "..id) end
-      else
-	 runecache[id] = nil
-	 if mod.debug then mod:debug("Clearing rune cooldown: "..id) end
-      end
-      mod:RUNE_POWER_UPDATE(_, id, ready)
-   end
-end
-
-
 local addonEnabled = false
 local db, isInGroup, inCombat
 local bars 
+
 runebars = {}
 
 if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
@@ -114,9 +89,10 @@ if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
    end
 
    function mod:TriggerRune(id, ready)
-      if not ready then 
+      id = id or random(6)
+      if not ready then
 	 runecache[id] = {
-	    GetTime()-random(3), 10, false
+	    GetTime(), 10, false
 	 }
 	 if mod.debug then mod:debug("Starting rune cooldown: "..id) end
       else
@@ -154,22 +130,25 @@ local colors = {
 
 local defaults = {
    profile = {
-      orientation = 1,
-      sortmethod = 1,
+      displayType = mod.RUNE_DISPLAY,
+      flashMode = 2,
+      flashTimes = 2,
+      sound = "None",
       font = "Friz Quadrata TT",
+      fontsize = 14,
+      hideAnchor = true,
+      iconScale = 1.0,
+      length = 250,
+      orientation = 1,
+      scale = 1.0,
+      showIcon = true,
       showLabel = true,
       showTimer = true,
-      showIcon = true,
-      hideAnchor = true,
-      texture =  "Minimalist",
-      displayType = mod.RUNE_DISPLAY,
-      fontsize = 14,
-      spacing = 1,
-      length = 250,
-      thickness = 25,
       showTooltip = true,
-      scale = 1.0,
-      iconScale = 1.0
+      sortMethod = 1,
+      spacing = 1,
+      texture =  "Minimalist",
+      thickness = 25,
    }
 }
 
@@ -183,13 +162,7 @@ local function GetRuneInfo(runeid)
    end
 end
 
-local function SetColorOpt(arg, r, g, b, a)
-   local color = arg[#arg]
-   db.colors[color][1] = r
-   db.colors[color][2] = g
-   db.colors[color][3] = b
-   db.colors[color][4] = a
-
+local function RefreshBarColors()
    for id,bar in ipairs(runebars) do
       local bdb = db.bars[id]
       if bdb.type == mod.RUNE_BAR then
@@ -197,6 +170,15 @@ local function SetColorOpt(arg, r, g, b, a)
 	 mod:SetBarColor(bar, color)
       end
    end
+end
+
+local function SetColorOpt(arg, r, g, b, a)
+   local color = arg[#arg]
+   db.colors[color][1] = r
+   db.colors[color][2] = g
+   db.colors[color][3] = b
+   db.colors[color][4] = a
+   RefreshBarColors()
 end
 
 local function GetColorOpt(arg)
@@ -275,9 +257,7 @@ function mod:OnInitialize()
 					      mod:ToggleConfigDialog()
 					   elseif button == "MiddleButton" and
 					      mod.TriggerRune then
-					      for id = 1,6 do
-						 mod:TriggerRune(id)
-					      end
+					      mod:TriggerRune()
 					   elseif button == "RightButton" then
 					      mod:ToggleLocked()
 					   end
@@ -368,6 +348,7 @@ function mod:ReleaseBar(bar)
    bar.type  = nil
    bar.notReady = nil
    bar.iconPath = nil
+   bar.gcdnotify = false
    bar:SetScript("OnEnter", nil)
    bar:SetScript("OnLeave", nil)
    bar:EnableMouse(false)
@@ -441,8 +422,8 @@ end
 function mod:UpdateLabels()
    for id, data in ipairs(db.bars) do
       local bar = runebars[id]
-      if db.showlabel then bar:ShowLabel() else bar:HideLabel() end
-      if db.showtimer then bar:ShowTimerLabel() else bar:HideTimerLabel() end
+      if db.showLabel then bar:ShowLabel() else bar:HideLabel() end
+      if db.showTimer then bar:ShowTimerLabel() else bar:HideTimerLabel() end
    end
 end
 
@@ -519,9 +500,12 @@ do
    local activeRunes = {}
    
    local runeData = { {}, {}, {}, {}, {}, {} }
-   local now, updated, data, bar 
+   local now, updated, data, bar, playAlert
 
    function mod:UpdateRemainingTimes()
+      if db.flashTimes and db.flashMode == 2 then
+	 RefreshBarColors()
+      end
       for id,barData in ipairs(db.bars) do
 	 bar = runebars[id]
 	 if barData.type == mod.RUNE_BAR then
@@ -545,6 +529,7 @@ do
 
    function mod.UpdateBars()
       now = GetTime()
+      playAlert = nil
       for id = 1,6 do
 	 data = runeData[id]
 	 data.remaining = max(data.start + data.duration - now, 0)
@@ -577,29 +562,39 @@ do
 		  end
 		  bar.timerLabel:SetText("")
 		  bar.notReady = nil
+		  if bar.flashing then bar:StopFlash() end
+		  bar.gcdnotify = nil
 	       end
 	    else
-	       if db.showRemaining then
-		  bar.value = data.remaining
-	       else
-		  bar.value = data.value
-	       end
-	       bar:SetMaxValue(data.duration)
-	       if db.showtimer then
-		  if data.remaining == 0 then
-		     bar.timerLabel:SetText("")
-		  elseif data.remaining > 2.0 or vertical then
-		     bar.timerLabel:SetText(fmt("%.0f", data.remaining))
-		  else
-		     bar.timerLabel:SetText(fmt("%.1f", data.remaining))
+	       newValue = db.showRemaining and data.remaining or data.value
+	       if bar.value ~= newValue then
+		  if data.remaining < gcd and not bar.gcdnotify then 
+		     if flashTimer and not bar.flashing then
+			bar:Flash(data.remaining/flashTimer)
+		     end
+		     bar.gcdnotify = true
+		     playAlert = true
+		  end
+		  bar:SetValue(newValue)
+		  if db.showTimer then
+		     if data.remaining == 0 then
+			bar.timerLabel:SetText("")
+		     elseif data.remaining > 2.0 or vertical then
+			bar.timerLabel:SetText(fmt("%.0f", data.remaining))
+		     else
+			bar.timerLabel:SetText(fmt("%.1f", data.remaining))
+		     end
 		  end
 	       end
 	       bar.notReady = true
 	    end
 	 end
       end
-      if  db.sortmethod > 1 then 
+      if db.sortMethod > 1 then 
 	 bars:SortBars()	
+      end
+      if playAlert and mod.soundFile then
+	 PlaySoundFile(mod.soundFile)
       end
    end
    
@@ -647,11 +642,29 @@ end
 
 function mod:SetBarColor(bar, color)
    if not color then return end
+   local rf = 0.5+color[1]/2
+   local gf = 0.5+color[2]/2
+   local bf = 0.5+color[3]/2
    bar:UnsetAllColors()
-   bar:SetColorAt(1.0, color[1], color[2], color[3], color[4])
-   if db.fadebars then
-      bar:SetColorAt(0, color[1]*0.5, color[2]*0.5, color[3]*0.5, color[4])
+
+   if db.flashTimes and db.flashMode == 2 then
+      local offset = gcd/10
+      local interval = offset/(db.flashTimes*2)
+      local endVal
+      if db.showRemaining then
+	 endVal = interval
+	 interval = -interval
+      else
+	 endVal = 1-interval
+	 offset = 1-offset
+      end
+      for val = offset,endVal,(interval*2) do
+	 bar:SetColorAt(val, color[1], color[2], color[3], color[4])
+	 if val ~= endVal then bar:SetColorAt(val+interval, rf, gf, bf, 1) end
+      end
    end
+   bar:SetColorAt(0, color[1], color[2], color[3], color[4])
+   bar:SetColorAt(1, color[1], color[2], color[3], color[4])
 end
 
 function mod:PLAYER_REGEN_ENABLED()
@@ -685,8 +698,41 @@ function mod:SetDefaultBars()
    db.bars = bars
 end
 
+
+function mod:SetFlashTimer(_, val)
+   if val then db.flashTimes = val end
+   
+   if db.flashTimes and db.flashTimes > 0 and db.flashMode == 3 then
+      flashTimer = db.flashTimes * 2 * math.pi
+   else
+      flashTimer = nil
+   end
+   RefreshBarColors()
+end
+
+function mod:SetSoundFile(_,val)
+   if val then
+      db.sound = val
+   end
+   mod.soundFile = media:Fetch("sound", db.sound)
+end
+
+local varChanges = {
+   showlabel = "showLabel",
+   showtimer = "showTimer",
+   sortmethod = "sortMethod",
+   hideanchor = "hideAnchor",
+   iconscale = "iconScale"
+}
+
 function mod:ApplyProfile()
    -- configure based on saved data
+   for from,to in pairs(varChanges) do
+      if db[from] then
+	 db[to] = db[from]
+	 db[from] = nil
+      end
+   end
    bars:ClearAllPoints()
    if db.point then
       bars:SetPoint(unpack(db.point))
@@ -696,17 +742,18 @@ function mod:ApplyProfile()
    bars:ReverseGrowth(db.growup)
    if db.locked then bars:Lock() else bars:Unlock() end
    if db.hideAnchor and db.locked then bars:HideAnchor() else bars:ShowAnchor() end
-
+   mod:SetSoundFile()
    bars:SetSortFunction(bars.NOOP)
    mod:SetDefaultColors()
    mod:SetDefaultBars()
    mod:CreateBars()
+   mod:SetFlashTimer()
    mod:SetTexture()
    mod:SetFont()
    mod:SetSize()
    mod:SetOrientation(db.orientation)
 --   mod:SetupBarOptions(true)
-   bars:SetSortFunction(sortFunctions[db.sortmethod])
+   bars:SetSortFunction(sortFunctions[db.sortMethod])
    bars:SetScale(db.scale)
    bars:SetSpacing(db.spacing)
    bars:SortBars()
@@ -800,15 +847,15 @@ options = {
 	    width = "full",
 	    set = function() mod:ToggleLocked() end,
 	 },
-	 growup = {
-	    type = "toggle",
-	    name = "Reverse growth direction",
-	    width = "full",
-	    set = function()
-		     db.growup = not db.growup
-		     bars:ReverseGrowth(db.growup)
-		  end,
-	 },
+--	 growup = {
+--	    type = "toggle",
+--	    name = "Reverse growth direction",
+--	    width = "full",
+--	    set = function()
+--		     db.growup = not db.growup
+--		     bars:ReverseGrowth(db.growup)
+--		  end,
+--	 },
 	 hideAnchor = {
 	    type = "toggle",
 	    name = "Hide anchor when bars are locked.",
@@ -822,6 +869,14 @@ options = {
 		     end
 		     mod:info("The anchor will be %s when the bars are locked.", db.hideAnchor and "hidden" or "shown") 
 		  end,
+	 },
+	 sound = {
+	    type = 'select',
+	    dialogControl = 'LSM30_Sound',
+	    name = 'Alert Sound',
+	    desc = 'Sound to play when a rune is one global cooldown away from being ready.',
+	    values = AceGUIWidgetLSMlists.sound,
+	    set = "SetSoundFile",
 	 },
 	 preset = {
 	    type = "select", 
@@ -838,6 +893,7 @@ options = {
 			   db[var] = val
 			end
 			mod:ApplyProfile()
+			mod:NotifyChange()
 		     end
 		  end
 	 }
@@ -851,17 +907,6 @@ options = {
       set = SetColorOpt,
       get = GetColorOpt,
       args = {
-	 fadebars = {
-	    type = "toggle",
-	    name = "Fade bar color as they increase",
-	    width = "full",
-	    set = function()
-		     db.fadebars = not db.fadebars
-		     mod:info("Bar fading is %s.", db.fadebars and "enabled" or "disabled") 
-		  end,
-	    get = "GetGlobalOption",
-	    order = 0
-	 },
 	 Blood = {
 	    type = "color",
 	    name = "Blood",
@@ -885,6 +930,63 @@ options = {
 	    name = "Death",
 	    desc = "Color used for death rune bars.",
 	    hasAlpha = true, 
+	 },
+      },
+   },
+   deco = {
+      type = "group",
+      name = "Decoration and Effects",
+      handler = mod,
+      get = "GetGlobalOption",
+      args = {
+	 showLabel = {
+	    type = "toggle",
+	    name = "Show labels",
+	    set = function(_,val) db.showLabel = val mod:UpdateLabels() end,
+	    order = 10,
+	    
+	 },
+	 showTimer = {
+	    type = "toggle",
+	    name = "Show timer",
+	    set = function(_,val) db.showTimer = val mod:UpdateLabels() end,
+	    order = 20,
+	 },
+	 showIcon = {
+	    type = "toggle",
+	    name = "Show icons",
+	    set = function(_,val) db.showIcon = val mod:UpdateIcons() end,
+	    order = 30
+	 },
+	 animateIcons = {
+	    type = "toggle",
+	    name = "Animate Icons",
+	    desc = "If enabled, the icons will move with the bar. If the bar texture is hidden, you'll get a display simply showing the cooldown using icons.",
+	    set = function(_, val) db.animateIcons = val mod:SetOrientation(db.orientation) end,
+	    order = 35,
+	    disabled = function() return not db.showIcon end
+	 },
+	 flashMode = {
+	    type = "select",
+	    name = "Flash Mode",
+	    desc = "Type of flashing to use to indicate imminent readiness.",
+	    values = {
+	       "None",
+	       "Color Flash",
+	       "Alpha Flash"
+	    },
+	    set = function(_,val) db.flashMode = val mod:SetFlashTimer() end,
+	    order = 40,
+	 },
+	 flashTimes = {
+	    type = "range",
+	    name = "Number of Flashes",
+	    desc = "Number of times to flash bars when the remaining is less than the GCD. Set to zero to disable flashing.",
+	    min = 1, max = 10, step = 1,
+	    set = "SetFlashTimer",
+	    hidden = function() return db.flashMode == 1 end,
+	    order = 50,
+	    
 	 },
       },
    },
@@ -947,47 +1049,10 @@ options = {
 	    set = function(_,val) db.orientation = val mod:SetOrientation(val) end,
 	    order = 5,
 	 },
-	 header2 = {
-	    type = "header",
-	    name = "Decorations",
-	    order = 9
-	 },
-	 showlabel = {
-	    type = "toggle",
-	    name = "Show labels",
-	    set = function(_,val) db.showlabel = val mod:UpdateLabels() end,
-	    order = 10,
-	    
-	 },
-	 showtimer = {
-	    type = "toggle",
-	    name = "Show timer",
-	    set = function(_,val) db.showtimer = val mod:UpdateLabels() end,
-	    order = 20,
-	 },
-	 showIcon = {
-	    type = "toggle",
-	    name = "Show icons",
-	    set = function(_,val) db.showIcon = val mod:UpdateIcons() end,
-	    order = 30
-	 },
-	 animateIcons = {
-	    type = "toggle",
-	    name = "Animate Icons",
-	    desc = "If enabled, the icons will move with the bar. If the bar texture is hidden, you'll get a display simply showing the cooldown using icons.",
-	    set = function(_, val) db.animateIcons = val mod:SetOrientation(db.orientation) end,
-	    order = 30,
-	    disabled = function() return not db.showIcon end
-	 },
-	 header3 = {
-	    type = "header",
-	    name = "Sorting",
-	    order = 30
-	 },
-	 sortmethod = {
+	 sortMethod = {
 	    type = "select",
 	    name = "Sort Method",
-	    set = function(_,val) db.sortmethod = val bars:SetSortFunction(sortFunctions[val]) bars:SortBars() end,
+	    set = function(_,val) db.sortMethod = val bars:SetSortFunction(sortFunctions[val]) bars:SortBars() end,
 	    values = {
 	       "Rune Order",
 	       "Rune Type, Time",
@@ -995,13 +1060,13 @@ options = {
 	       "Time, Rune Type",
 	       "Reverse Time, Rune Type",
 	    },
-	    order = 35
+	    order = 50
 	 },
 	 reverseSort = {
 	    type = "toggle",
 	    name = "Reverse Sorting",
 	    set = function(_,val) db.reverseSort = val bars:SortBars() end,
-	    order = 40
+	    order = 60
 	 },
       },
    },
@@ -1158,19 +1223,33 @@ function mod:SetBarOption(info, val)
    mod.UpdateBars()
 end
 
-function mod:OptReg(optname, tbl, dispname, cmd)
-   if dispname then
-      optname = "Magic Runes"..optname
-      LibStub("AceConfig-3.0"):RegisterOptionsTable(optname, tbl, cmd)
-      if not cmd then
-	 return LibStub("AceConfigDialog-3.0"):AddToBlizOptions(optname, dispname, "Magic Runes")
+
+do
+   local configPanes = {}
+   function mod:OptReg(optname, tbl, dispname, cmd)
+      local regtable
+      if dispname then
+	 optname = "Magic Runes"..optname
+	 LibStub("AceConfig-3.0"):RegisterOptionsTable(optname, tbl, cmd)
+	 if not cmd then
+	    regtable = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(optname, dispname, "Magic Runes")
+	 end
+      else
+	 LibStub("AceConfig-3.0"):RegisterOptionsTable(optname, tbl, cmd)
+	 if not cmd then
+	    regtable = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(optname, "Magic Runes")
+	 end
       end
-   else
-      LibStub("AceConfig-3.0"):RegisterOptionsTable(optname, tbl, cmd)
-      if not cmd then
-	 return LibStub("AceConfigDialog-3.0"):AddToBlizOptions(optname, "Magic Runes")
+      configPanes[#configPanes+1] = optname
+      return regtable
+   end
+   function mod:NotifyChange()
+      for _,name in ipairs(configPanes) do
+	 mod:debug("Notifying change for "..name)
+	 R:NotifyChange(name)
       end
    end
+
 end
 
 function mod:SetupBarOptions(reload)
@@ -1200,8 +1279,9 @@ end
 function mod:SetupOptions()
    mod.main = mod:OptReg("Magic Runes", options.general)
    mod:OptReg(": Profiles", options.profile, "Profiles")
-   mod:OptReg(": Bar Sizing", options.sizing, "Bar Layout")
-   mod:OptReg(": Bar Colors", options.colors, "Bar Colors")
+   mod:OptReg(": Bar Sizing", options.sizing, "Layout")
+   mod:OptReg(": Bar Decorations", options.deco, "Decorations")
+   mod:OptReg(": Bar Colors", options.colors, "Colors")
 --   mod:SetupBarOptions()
    mod.text = mod:OptReg(": Font & Texture", options.looks, "Font & Texture")
    
