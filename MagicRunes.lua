@@ -125,6 +125,7 @@ local colors = {
    Unholy = { [1] = 0,   [2] = 0.7, [3] = 0,   [4] = 1 },
    Frost  = { [1] = 0,   [2] = 0.5, [3] = 1,   [4] = 1 },
    Death  = { [1] = 0.8, [2] = 0,   [3] = 0.9, [4] = 1 },
+   Background = { [1] = 0.3, [2] = 0,3, [3] = 0.3, [4] = 0.5 },
 }
 
 local defaults = {
@@ -151,7 +152,8 @@ local defaults = {
       fadeAlpha = true,
       sortMethod = 1,
       spacing = 1,
-      texture =  "Minimalist",
+      texture   =  "Minimalist",
+      bgtexture =  "Minimalist",
       thickness = 25,
    }
 }
@@ -167,12 +169,14 @@ local function GetRuneInfo(runeid)
 end
 
 local function RefreshBarColors()
+   local bg = db.colors.Background
    for id,bar in ipairs(runebars) do
       local bdb = db.bars[id]
       if bdb.type == mod.RUNE_BAR then
 	 local name, _, _, color = GetRuneInfo(bdb.runeid)
 	 mod:SetBarColor(bar, color)
       end
+      bar:SetBackgroundColor(bg[1], bg[2], bg[3], bg[4])
    end
 end
 
@@ -407,6 +411,9 @@ function mod:SetIconScale(val)
 end
 function mod:SetTexture()
    bars:SetTexture(media:Fetch("statusbar", db.texture))
+   for _,bar in ipairs(runebars) do
+      bar.bgtexture:SetTexture(media:Fetch("statusbar", db.bgtexture))
+   end
 end
 
 function mod:SetFont()
@@ -926,7 +933,7 @@ options = {
 		     if db.preset ~= preset then
 			db.preset = preset
 			for var,val in pairs(mod.presets[preset].data) do
-			   mod:debug("Setting %s to %s", var, tostring(val))
+--			   mod:debug("Setting %s to %s", var, tostring(val))
 			   db[var] = val
 			end
 			mod:ApplyProfile()
@@ -948,25 +955,36 @@ options = {
 	    type = "color",
 	    name = "Blood",
 	    desc = "Color used for blood rune bars.",
-	    hasAlpha = true, 
+	    hasAlpha = true,
+	    order = 1,
 	 },
 	 Unholy = {
 	    type = "color",
 	    name = "Unholy",
 	    desc = "Color used for unholy rune bars.",
-	    hasAlpha = true, 
+	    hasAlpha = true,
+	    order = 2,
 	 },
 	 Frost = {
 	    type = "color",
 	    name = "Frost",
 	    desc = "Color used for frost rune bars.",
-	    hasAlpha = true, 
+	    hasAlpha = true,
+	    order = 3,
 	 },
 	 Death = {
 	    type = "color",
 	    name = "Death",
 	    desc = "Color used for death rune bars.",
-	    hasAlpha = true, 
+	    hasAlpha = true,
+	    order = 4,
+	 },
+	 Background = {
+	    type = "color",
+	    name = "Background",
+	    desc = "Color used for background texture.",
+	    hasAlpha = true,
+	    order = 5,
 	 },
       },
    },
@@ -1169,10 +1187,19 @@ options = {
 	    type = 'select',
 	    dialogControl = 'LSM30_Statusbar',
 	    name = 'Texture',
-	    desc = 'The background texture used for the bars.',
+	    desc = 'The texture used for active bars.',
 	    values = AceGUIWidgetLSMlists.statusbar, 
 	    set = function(_,val) db.texture = val mod:SetTexture() end,
 	    order = 3
+	 },
+	 bgtexture = {
+	    type = 'select',
+	    dialogControl = 'LSM30_Statusbar',
+	    name = 'Background Texture',
+	    desc = 'The background texture for the bars. .',
+	    values = AceGUIWidgetLSMlists.statusbar, 
+	    set = function(_,val) db.bgtexture = val mod:SetTexture() end,
+	    order = 4
 	 },
 	 font = {
 	    type = 'select',
@@ -1333,7 +1360,7 @@ do
    end
    function mod:NotifyChange()
       for _,name in ipairs(configPanes) do
-	 mod:debug("Notifying change for "..name)
+--	 mod:debug("Notifying change for "..name)
 	 R:NotifyChange(name)
       end
    end
