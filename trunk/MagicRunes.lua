@@ -154,7 +154,9 @@ local defaults = {
       spacing = 1,
       texture   =  "Minimalist",
       bgtexture =  "Minimalist",
+      timerOnIcon = false, 
       thickness = 25,
+      showSpark = true,
    }
 }
 
@@ -231,8 +233,9 @@ function mod:OnInitialize()
    self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileChanged")
    self.db.RegisterCallback(self, "OnProfileReset", "OnProfileChanged")
    MagicRunesDB.point = nil
+   MagicRunesDB.presets = nil
    db = self.db.profile
-
+   
    -- bar types
    mod.RUNIC_BAR = 1
    mod.RUNE_BAR  = 2
@@ -441,7 +444,15 @@ function mod:UpdateLabels()
    for id, data in ipairs(db.bars) do
       local bar = runebars[id]
       if db.showLabel then bar:ShowLabel() else bar:HideLabel() end
-      if db.showTimer then bar:ShowTimerLabel() else bar:HideTimerLabel() end
+      if db.showTimer then
+	 bar:ShowTimerLabel()
+	 bar.timerLabel:ClearAllPoints()
+	 if db.timerOnIcon then
+	    bar.timerLabel:SetPoint("CENTER", bar.icon, "CENTER")
+	 else
+	    bar.timerLabel:SetPoint("RIGHT", bar, "RIGHT", -6, 0)
+	 end
+      else bar:HideTimerLabel() end
    end
 end
 
@@ -670,6 +681,7 @@ do
 end
 
 function mod:AnchorMoved(cbk, group, button)
+   
    db.point = { group:GetPoint() }
 end
 
@@ -788,7 +800,7 @@ function mod:ApplyProfile()
    mod:SetTexture()
    mod:SetFont()
    mod:SetSize()
-   mod:SetOrientation(db.orientation)
+   mod:SetOrientation()
 --   mod:SetupBarOptions(true)
    bars:SetSortFunction(sortFunctions[db.sortMethod])
    bars:SetScale(db.scale)
@@ -810,6 +822,7 @@ function mod:SetBarLabel(id, data)
 end
 
 function mod:SetOrientation(orientation)
+   if not orientation then orientation = db.orientation end
    bars:SetOrientation(orientation)
    vertical = (orientation == 2 or orientation == 4)
    for id,data in ipairs(db.bars) do
@@ -819,11 +832,12 @@ function mod:SetOrientation(orientation)
 	 bar.icon:SetPoint("CENTER", bar.spark)
 	 bar.spark:SetAlpha(0)
       else
-	 bar.spark:SetAlpha(1)
+	 bar.spark:SetAlpha(db.showSpark and 1 or 0)
       end
       mod:SetBarLabel(id, data)
    end
    mod:SetIconScale(db.iconScale)
+   mod:UpdateLabels()
 end
 
 function mod:SetSize()
@@ -1007,6 +1021,13 @@ options = {
 	    set = function(_,val) db.showTimer = val mod:UpdateLabels() end,
 	    order = 20,
 	 },
+	 timerOnIcon = {
+	    type = "toggle",
+	    name = "Show timer on icon",
+	    set = function(_,val) db.timerOnIcon = val mod:UpdateLabels() end,
+	    disabled = function() return not (db.showTimer and db.showIcon) end,
+	    order = 25
+	 },
 	 showIcon = {
 	    type = "toggle",
 	    name = "Show icons",
@@ -1017,9 +1038,17 @@ options = {
 	    type = "toggle",
 	    name = "Animate Icons",
 	    desc = "If enabled, the icons will move with the bar. If the bar texture is hidden, you'll get a display simply showing the cooldown using icons.",
-	    set = function(_, val) db.animateIcons = val mod:SetOrientation(db.orientation) end,
+	    set = function(_, val) db.animateIcons = val mod:SetOrientation() end,
 	    order = 35,
 	    disabled = function() return not db.showIcon end
+	 },
+	 showSpark = {
+	    type = "toggle",
+	    name = "Show spark",
+	    desc = "Toggle whether or not to show the spark on active bars.",
+	    set = function(_,val) db.showSpark = val mod:SetOrientation() end,
+	    order = 38,
+	    disabled = function() return db.animateIcons end
 	 },
 	 flashMode = {
 	    type = "select",
@@ -1107,7 +1136,7 @@ options = {
 	    type = "range",
 	    name = "Length",
 	    width = "full",
-	    min = 100, max = 500, step = 0.01,
+	    min = 20, max = 500, step = 0.01,
 	    set = function(_,val) db.length = val mod:SetSize() end,
 	    order = 1
 	 }, 
@@ -1423,14 +1452,19 @@ do
    local presetParameters = {
       "orientation", "showLabel", "showTimer", "showIcon",
       "spacing", "length", "thickness", "iconScale",
-      "animateIcons", "showRemaining"
+      "animateIcons", "showRemaining",
+      "alphaGCD", "alphaActive", "fadeAlpha",
+      "flashMode", "flashTimes", "texture", "bgtexture",
+      "timerOnIcon", "showSpark",
    }
    
-   function mod:SavePreset(name)
+   function mod:SavePreset(name, desc)
       local presets = MagicRunesDB.presets or {}
-      presets[name] = {}
+      presets[name] = { name = desc,
+	 data = {}
+      }
       for _,param in ipairs(presetParameters) do
-	 presets[name][param] = db[param]
+	 presets[name].data[param] = db[param]
       end
       MagicRunesDB.presets = presets
    end
