@@ -1029,11 +1029,11 @@ options = {
 	    set = function(_,val) db.showTimer = val mod:UpdateLabels() end,
 	    order = 20,
 	 },	 
-	 showTimer = {
+	 secondsOnly = {
 	    type = "toggle",
 	    name = "Seconds only",
 	    desc = "Normally the time is shown with one decimal place when the remaining cooldown is less than the global cooldown. If this toggled on, only seconds will be shown.",
-	    set = function(_,val) db.showTimer = val mod:UpdateLabels() end,
+	    set = function(_,val) db.secondsOnly = val mod:UpdateLabels() end,
 	    disabled = function() return not db.showTimer end,
 	    order = 24,
 	 },
