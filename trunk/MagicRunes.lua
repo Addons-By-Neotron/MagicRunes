@@ -58,6 +58,7 @@ local vertical
 local gcd = 1.5
 local flashTimer
 local playerInCombat = InCombatLockdown()
+local idleAlphaLevel
 
 if Logger then
    Logger:Embed(MagicRunes)
@@ -139,6 +140,7 @@ local defaults = {
       hideAnchor = true,
       iconScale = 1.0,
       length = 250,
+      secondsOnly = false, 
       orientation = 1,
       scale = 1.0,
       showIcon = true,
@@ -235,6 +237,7 @@ function mod:OnInitialize()
    MagicRunesDB.point = nil
    MagicRunesDB.presets = nil
    db = self.db.profile
+   idleAlphaLevel = playerInCombat and db.alphaReady or db.alphaOOC
    
    -- bar types
    mod.RUNIC_BAR = 1
@@ -586,7 +589,7 @@ do
 		  mod:TriggerRune(barData.runeid, true)
 	       end
 	       if bar.notReady or numActiveRunes == 0 then
-		  bar:SetAlpha(playerInCombat and db.alphaReady or db.alphaOOC)
+		  bar:SetAlpha(idleAlphaLevel)
 		  if db.showRemaining then
 		     bar:SetValue(0)
 		  else
@@ -610,6 +613,9 @@ do
 			end
 			bar.gcdnotify = true
 			playAlert = true
+		     elseif db.fadeAlphaGCD and not bar.flashing then
+			tmp = data.remaining/gcd
+			bar:SetAlpha(db.alphaGCD*tmp + idleAlphaLevel*(1-tmp))			
 		     end
 		  else
 		     if db.fadeAlpha then
@@ -623,7 +629,7 @@ do
 		  if db.showTimer then
 		     if data.remaining == 0 then
 			bar.timerLabel:SetText("")
-		     elseif data.remaining > 2.0 or vertical then
+		     elseif data.remaining > gcd or db.secondsOnly then
 			bar.timerLabel:SetText(fmt("%.0f", data.remaining))
 		     else
 			bar.timerLabel:SetText(fmt("%.1f", data.remaining))
@@ -714,12 +720,14 @@ end
 
 function mod:PLAYER_REGEN_ENABLED()
    playerInCombat = false
+   idleAlphaLevel = db.alphaOOC
    mod.UpdateBars()
 end
 
 
 function mod:PLAYER_REGEN_DISABLED()
    playerInCombat = true
+   idleAlphaLevel = db.alphaReady
    mod.UpdateBars()
 end
 
@@ -1020,6 +1028,14 @@ options = {
 	    name = "Show timer",
 	    set = function(_,val) db.showTimer = val mod:UpdateLabels() end,
 	    order = 20,
+	 },	 
+	 showTimer = {
+	    type = "toggle",
+	    name = "Seconds only",
+	    desc = "Normally the time is shown with one decimal place when the remaining cooldown is less than the global cooldown. If this toggled on, only seconds will be shown.",
+	    set = function(_,val) db.showTimer = val mod:UpdateLabels() end,
+	    disabled = function() return not db.showTimer end,
+	    order = 24,
 	 },
 	 timerOnIcon = {
 	    type = "toggle",
@@ -1122,6 +1138,15 @@ options = {
 	    width = "full",
 	    set = "SetGlobalOption",
 	    order = 140,
+	 },
+	 fadeAlphaGCD = {
+	    type = "toggle",
+	    name = "Fade alpha from gcd to ready",
+	    desc = "Fade the alpha level between the GCD level and the ready level. This option is ignored if the alpha flash notification is enabled.",
+	    width = "full",
+	    set = "SetGlobalOption",
+	    disabled = function() return db.flashMode == 3 end,
+	    order = 145,
 	 }
       }
    },
