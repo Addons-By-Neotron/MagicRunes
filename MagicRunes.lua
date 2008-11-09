@@ -57,6 +57,7 @@ local unpack = unpack
 local vertical 
 local gcd = 1.5
 local flashTimer
+local playerInCombat = InCombatLockdown()
 
 if Logger then
    Logger:Embed(MagicRunes)
@@ -72,7 +73,7 @@ else
 end
 
 local addonEnabled = false
-local db, isInGroup, inCombat
+local db, isInGroup
 local bars 
 
 runebars = {}
@@ -88,16 +89,14 @@ if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
       end
    end
 
-   function mod:TriggerRune(id, ready)
+   function mod:TriggerRune(id, ready, timeout)
       id = id or random(6)
       if not ready then
 	 runecache[id] = {
-	    GetTime(), 10, false
+	    GetTime()-(timeout or 0), 10, false
 	 }
-	 if mod.debug then mod:debug("Starting rune cooldown: "..id) end
       else
 	 runecache[id] = nil
-	 if mod.debug then mod:debug("Clearing rune cooldown: "..id) end
       end
       mod:RUNE_POWER_UPDATE(_, id, ready)
    end
@@ -145,6 +144,11 @@ local defaults = {
       showLabel = true,
       showTimer = true,
       showTooltip = true,
+      alphaOOC = 1.0,
+      alphaReady = 1.0,
+      alphaGCD = 1.0,
+      alphaActive = 0.5,
+      fadeAlpha = true,
       sortMethod = 1,
       spacing = 1,
       texture =  "Minimalist",
@@ -257,7 +261,12 @@ function mod:OnInitialize()
 					      mod:ToggleConfigDialog()
 					   elseif button == "MiddleButton" and
 					      mod.TriggerRune then
-					      mod:TriggerRune()
+					      mod:TriggerRune(6)
+					      mod:TriggerRune(4)
+					      mod:TriggerRune(2, false, 1.5)
+					      mod:TriggerRune(1, false, 3.0)
+					      mod:TriggerRune(3, false, 4.5)
+					      mod:TriggerRune(5, false, 6.0)
 					   elseif button == "RightButton" then
 					      mod:ToggleLocked()
 					   end
@@ -339,6 +348,8 @@ function mod:OnEnable()
    end
    mod:RegisterEvent("RUNE_POWER_UPDATE")
    mod:RegisterEvent("RUNE_TYPE_UPDATE")
+   mod:RegisterEvent("PLAYER_REGEN_ENABLED")
+   mod:RegisterEvent("PLAYER_REGEN_DISABLED")
 end
 
 -- We mess around with bars so restore them to a prestine state
@@ -430,6 +441,8 @@ end
 function mod:OnDisable()
    mod:UnregisterEvent("RUNE_POWER_UPDATE")
    mod:UnregisterEvent("RUNE_TYPE_UPDATE")
+   mod:UnregisterEvent("PLAYER_REGEN_ENABLED")
+   mod:UnregisterEvent("PLAYER_REGEN_DISABLED")
 end
 
 local function Bar_UpdateTooltip(self, tooltip)
@@ -500,7 +513,7 @@ do
    local activeRunes = {}
    
    local runeData = { {}, {}, {}, {}, {}, {} }
-   local now, updated, data, bar, playAlert
+   local now, updated, data, bar, playAlert, tmp
 
    function mod:UpdateRemainingTimes()
       if db.flashTimes and db.flashMode == 2 then
@@ -554,7 +567,8 @@ do
 	       if mod.TriggerRune and not data.ready then 
 		  mod:TriggerRune(barData.runeid, true)
 	       end
-	       if bar.notReady then
+	       if bar.notReady or numActiveRunes == 0 then
+		  bar:SetAlpha(playerInCombat and db.alphaReady or db.alphaOOC)
 		  if db.showRemaining then
 		     bar:SetValue(0)
 		  else
@@ -568,12 +582,24 @@ do
 	    else
 	       newValue = db.showRemaining and data.remaining or data.value
 	       if bar.value ~= newValue then
-		  if data.remaining < gcd and not bar.gcdnotify then 
-		     if flashTimer and not bar.flashing then
-			bar:Flash(data.remaining/flashTimer)
+		  if data.remaining < gcd then
+		     if not bar.gcdnotify then 
+			if flashTimer and not bar.flashing then
+			   bar:SetAlpha(1.0)
+			   bar:Flash(data.remaining/flashTimer)
+			else
+			   bar:SetAlpha(db.alphaGCD)
+			end
+			bar.gcdnotify = true
+			playAlert = true
 		     end
-		     bar.gcdnotify = true
-		     playAlert = true
+		  else
+		     if db.fadeAlpha then
+			tmp = (data.remaining-gcd)/(10-gcd)
+			bar:SetAlpha(db.alphaActive*tmp + db.alphaGCD*(1-tmp))
+		     else
+			bar:SetAlpha(db.alphaActive)
+		     end
 		  end
 		  bar:SetValue(newValue)
 		  if db.showTimer then
@@ -668,10 +694,14 @@ function mod:SetBarColor(bar, color)
 end
 
 function mod:PLAYER_REGEN_ENABLED()
+   playerInCombat = false
+   mod.UpdateBars()
 end
 
 
 function mod:PLAYER_REGEN_DISABLED()
+   playerInCombat = true
+   mod.UpdateBars()
 end
 
 -- Config option handling below
@@ -756,6 +786,7 @@ function mod:ApplyProfile()
    bars:SetSortFunction(sortFunctions[db.sortMethod])
    bars:SetScale(db.scale)
    bars:SetSpacing(db.spacing)
+   mod.UpdateBars()
    bars:SortBars()
 end
 
@@ -818,6 +849,12 @@ end
 
 function mod:GetGlobalOption(info)
    return db[info[#info]]
+end
+
+function mod:SetGlobalOption(info, val)
+   local var = info[#info]
+   db[info[#info]] = val
+   mod.UpdateBars()
 end
 
 options = { 
@@ -985,10 +1022,61 @@ options = {
 	    min = 1, max = 10, step = 1,
 	    set = "SetFlashTimer",
 	    hidden = function() return db.flashMode == 1 end,
-	    order = 50,
-	    
+	    order = 50,	    
 	 },
       },
+   },
+   alpha = {
+      type = "group",
+      name = "Alpha Settings",
+      handler = mod,
+      get = "GetGlobalOption",
+      args = {
+	 alphaOOC = {
+	    type = "range",
+	    name = "Out of combat alpha",
+	    desc = "Alpha level for ready runes when out of combat.",
+	    width = "full",
+	    min = 0, max = 1, step = 0.01,
+	    set = "SetGlobalOption",
+	    order = 100,
+	 },
+	 alphaReady = {
+	    type = "range",
+	    name = "In-Combat ready rune alpha",
+	    desc = "Alpha level of ready runes when in combat.",
+	    width = "full",
+	    min = 0, max = 1, step = 0.01,
+	    set = "SetGlobalOption",
+	    order = 110,
+	 },
+	 alphaGCD = {
+	    type = "range",
+	    name = "In-GCD active rune alpha",
+	    desc = "Alpha level of active runes when the remaining cooldown is shorter the global cooldown.",
+	    width = "full",
+	    min = 0, max = 1, step = 0.01,
+	    set = "SetGlobalOption",
+	    order = 120,
+	 },
+	 alphaActive = {
+	    type = "range",
+	    name = "Out-of-GCD active rune alpha",
+	    desc = "Alpha level of active runes when the remaining cooldown is longer than the global cooldown.",
+	    width = "full",
+	    min = 0, max = 1, step = 0.01,
+	    set = "SetGlobalOption",
+	    order = 130,
+	 },
+	 fadeAlpha = {
+	    type = "toggle",
+	    name = "Fade alpha level of active runes",
+	    desc = "Fade alpha level between the in GCD and out of GCD alpha level. This can be used to make the rune cooldown displays become incrementally more visible as the cooldown decreases.", 
+	    width = "full",
+	    set = "SetGlobalOption",
+	    order = 140,
+	 }
+      }
    },
    sizing = {
       type = "group",
@@ -1278,12 +1366,13 @@ end
 
 function mod:SetupOptions()
    mod.main = mod:OptReg("Magic Runes", options.general)
-   mod:OptReg(": Profiles", options.profile, "Profiles")
-   mod:OptReg(": Bar Sizing", options.sizing, "Layout")
-   mod:OptReg(": Bar Decorations", options.deco, "Decorations")
+   mod:OptReg(": Bar Alpha", options.alpha, "Alpha Levels")
    mod:OptReg(": Bar Colors", options.colors, "Colors")
+   mod:OptReg(": Bar Decorations", options.deco, "Decorations")
+   mod:OptReg(": Bar Layout", options.sizing, "Layout and Sorting")
+   mod:OptReg(": Font & Texture", options.looks, "Font & Texture")
+   mod.text = mod:OptReg(": Profiles", options.profile, "Profiles")
 --   mod:SetupBarOptions()
-   mod.text = mod:OptReg(": Font & Texture", options.looks, "Font & Texture")
    
 
    mod:OptReg("Magic Runes CmdLine", {
