@@ -1083,7 +1083,7 @@ options = {
 	    name = "Death",
 	    desc = "Color used for the runic power bar.",
 	    hasAlpha = true,
-	    order = 4,
+	    order = 5,
 	 },
 	 Background = {
 	    type = "color",
