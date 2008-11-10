@@ -68,7 +68,11 @@ local addonEnabled = false
 local db, isInGroup
 local bars 
 local runebars = {}
-
+local runeValues = {
+   "Blood #1", "Blood #2",
+   "Unholy #1", "Unholy #2",
+   "Frost #1", "Frost #2",
+}
 if Logger then
    Logger:Embed(MagicRunes)
 else
@@ -129,6 +133,7 @@ local colors = {
    Unholy = { [1] = 0,   [2] = 0.7, [3] = 0,   [4] = 1 },
    Frost  = { [1] = 0,   [2] = 0.5, [3] = 1,   [4] = 1 },
    Death  = { [1] = 0.8, [2] = 0,   [3] = 0.9, [4] = 1 },
+   Runic =  { [1] = 0.2, [2] = 0.7, [3] = 1,   [4] = 1 },
    Background = { [1] = 0.3, [2] = 0,3, [3] = 0.3, [4] = 0.5 },
 }
 
@@ -180,13 +185,15 @@ end
 
 local function RefreshBarColors()
    local bg = db.colors.Background
-   for id,bar in ipairs(runebars) do
-      local bdb = db.bars[id]
-      if bdb.type == mod.RUNE_BAR then
-	 local name, _, _, color = GetRuneInfo(bdb.runeid)
-	 mod:SetBarColor(bar, color)
+   for id,bar in pairs(runebars) do
+      if bar then 
+	 local bdb = db.bars[id]
+	 if bdb.type == mod.RUNE_BAR then
+	    local name, _, _, color = GetRuneInfo(bdb.runeid)
+	    mod:SetBarColor(bar, color)
+	 end
+	 bar:SetBackgroundColor(bg[1], bg[2], bg[3], bg[4])
       end
-      bar:SetBackgroundColor(bg[1], bg[2], bg[3], bg[4])
    end
 end
 
@@ -307,15 +314,15 @@ local sortFunctions = {
    
    function(a, b) -- BarId
       if db.reverseSort then
-	 return a.barId > b.barId
+	 return (a.barId or 100) > (b.barId or 100)
       else
-	 return a.barId < b.barId
+	 return (a.barId or 100) < (b.barId or 100)
       end
    end,
    function(a, b) --  Rune, Time
       local sortval
-      local arune = a.type or 0
-      local brune = b.type or 0
+      local arune = a.type or 100
+      local brune = b.type or 100
       if arune == brune then
 	 sortval = a.value < b.value
       else
@@ -326,8 +333,8 @@ local sortFunctions = {
 
    function(a, b) --  Rune, Reverse Time
       local sortval
-      local arune = a.type or 0
-      local brune = b.type or 0
+      local arune = a.type or 100
+      local brune = b.type or 100
       if arune == brune then
 	 sortval = a.value > b.value
       else
@@ -339,7 +346,7 @@ local sortFunctions = {
    function(a, b) -- Time, Rune
       local sortval
       if a.value == b.value then
-	 sortval = (a.type or 0) < (b.type or 0)
+	 sortval = (a.type or 100) < (b.type or 100)
       else
 	 sortval = a.value < b.value
       end
@@ -348,7 +355,7 @@ local sortFunctions = {
    function(a, b) -- Reverse Time, Rune
       local sortval
       if a.value == b.value then
-	 sortval = (a.type or 0) < (b.type or 0)
+	 sortval = (a.type or 100) < (b.type or 100)
       else
 	 sortval = a.value > b.value
       end
@@ -372,6 +379,10 @@ function mod:OnEnable()
    mod:RegisterEvent("RUNE_TYPE_UPDATE")
    mod:RegisterEvent("PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_REGEN_DISABLED")
+   mod:RegisterEvent("UNIT_MANA", "UpdateRunicPower")
+   mod:RegisterEvent("UNIT_RUNIC_POWER", "UpdateRunicPower")
+   mod:RegisterEvent("UNIT_MAXMANA", "UpdateRunicPower")
+   mod:RegisterEvent("UNIT_MAXRUNIC_POWER", "UpdateRunicPower")
 end
 
 -- We mess around with bars so restore them to a prestine state
@@ -394,54 +405,65 @@ function mod:ReleaseBar(bar)
 end
 
 function mod:CreateBars()
-   for id,bar in ipairs(runebars) do
-      mod:ReleaseBar(bar)
-      runebars[id] = nil
+   for id,bar in pairs(runebars) do
+      if bar then
+	 mod:ReleaseBar(bar)
+	 runebars[id] = nil
+      end
    end
    
    if not db.bars then return end
    
    for id,data in ipairs(db.bars) do
-      local bar = bars:NewCounterBar("MagicRunes:"..id, "", db.showRemaining and 0 or 10, 10)
-      if not bar.overlayTexture then
-	 bar.overlayTexture =  bar:CreateTexture(nil, "OVERLAY")
-	 bar.overlayTexture:SetTexture("Interface/Buttons/UI-Listbox-Highlight2")
-	 bar.overlayTexture:SetBlendMode("ADD")
-	 bar.overlayTexture:SetVertexColor(1,1,1,0.6)
-	 bar.overlayTexture:SetAllPoints()
-      else
-	 bar.overlayTexture:Show()
+      if not data.hide then
+	 local bar = bars:NewCounterBar("MagicRunes:"..id, "", db.showRemaining and 0 or 10, 10)
+	 if not bar.overlayTexture then
+	    bar.overlayTexture =  bar:CreateTexture(nil, "OVERLAY")
+	    bar.overlayTexture:SetTexture("Interface/Buttons/UI-Listbox-Highlight2")
+	    bar.overlayTexture:SetBlendMode("ADD")
+	    bar.overlayTexture:SetVertexColor(1,1,1,0.6)
+	    bar.overlayTexture:SetAllPoints()
+	 else
+	    bar.overlayTexture:Show()
+	 end
+	 bar.overlayTexture:SetAlpha(0)
+	 bar:EnableMouse(true)
+	 bar.barId  = id
+	 bar:SetFrameLevel(id)
+	 runebars[id] = bar
+	 
+	 if data.type == mod.RUNE_BAR then
+	    local name, icon, type, color = GetRuneInfo(data.runeid)
+	    bar.type = type
+	    bar:SetIcon(icon) 
+	    bar:SetLabel(name) 
+	    mod:SetBarColor(bar, color)
+	 elseif data.type == mod.RUNIC_BAR then
+	    mod:UpdateRunicPower()
+	    mod:SetBarLabel(id, data)
+	    mod:SetBarColor(bar, db.colors.Runic)
+	    bar.icon:SetTexture(media:Fetch("statusbar", "Empty")) -- ugh
+	 end
+	 if not db.showIcon  then bar:HideIcon() end
+	 if not db.showLabel then bar:HideLabel() end
+	 if not db.showTimer then bar:HideTimerLabel() end
       end
-      bar.overlayTexture:SetAlpha(0)
-      bar:EnableMouse(true)
-      bar.barId  = id
-      bar:SetFrameLevel(id)
-      runebars[id] = bar
-      
-      if data.type == mod.RUNE_BAR then
-	 local name, icon, type, color = GetRuneInfo(data.runeid)
-	 bar.type = type
-	 bar:SetIcon(icon) 
-	 bar:SetLabel(name) 
-	 if not db.showIcon then bar:HideIcon() end
-	 mod:SetBarColor(bar, color)
-      end
-      if not db.showLabel then bar:HideLabel() end
-      if not db.showTimer then bar:HideTimerLabel() end
    end
 end
 
 function mod:SetIconScale(val)
-   for _,bar in ipairs(runebars) do
-      bar.icon:SetWidth(db.thickness * val)
-      bar.icon:SetHeight(db.thickness * val)
+   for _,bar in pairs(runebars) do
+      if bar then
+	 bar.icon:SetWidth(db.thickness * val)
+	 bar.icon:SetHeight(db.thickness * val)
+      end
    end
 end
 
 function mod:SetTexture()
    bars:SetTexture(media:Fetch("statusbar", db.texture))
-   for _,bar in ipairs(runebars) do
-      bar.bgtexture:SetTexture(media:Fetch("statusbar", db.bgtexture))
+   for _,bar in pairs(runebars) do
+      if bar then bar.bgtexture:SetTexture(media:Fetch("statusbar", db.bgtexture)) end
    end
 end
 
@@ -452,16 +474,18 @@ end
 function mod:UpdateIcons()
    for id, data in ipairs(db.bars) do
       local bar = runebars[id]
-      if db.showIcon and db.animateIcons then
-	 bar.spark:SetAlpha(0)
-      else
-	 bar.spark:SetAlpha(1)
-      end
-
-      if db.showIcon then
-	 bar:ShowIcon()
-      else
-	 bar:HideIcon()
+      if bar then 
+	 if db.showIcon and db.animateIcons then
+	    bar.spark:SetAlpha(0)
+	 else
+	    bar.spark:SetAlpha(1)
+	 end
+	 
+	 if db.showIcon then
+	    bar:ShowIcon()
+	 else
+	    bar:HideIcon()
+	 end
       end
    end
 end
@@ -469,22 +493,30 @@ end
 function mod:UpdateLabels()
    for id, data in ipairs(db.bars) do
       local bar = runebars[id]
-      if db.showLabel then bar:ShowLabel() else bar:HideLabel() end
-      if db.showTimer then
-	 bar:ShowTimerLabel()
-	 bar.timerLabel:ClearAllPoints()
-	 if db.timerOnIcon then
-	    bar.timerLabel:SetPoint("CENTER", bar.icon, "CENTER")
+      if bar then 
+	 if db.showLabel then bar:ShowLabel() else bar:HideLabel() end
+	 if db.showTimer then
+	    bar:ShowTimerLabel()
+	    if db.timerOnIcon and not db.showLabel then
+	       bar.timerLabel:ClearAllPoints()
+	       bar.timerLabel:SetPoint("CENTER", bar.icon, "CENTER")
+	    else
+	       bar:UpdateOrientationLayout()
+	    end
 	 else
-	    bar:UpdateOrientationLayout()
+	    bar:HideTimerLabel()
 	 end
-      else bar:HideTimerLabel() end
+      end
    end
 end
 
 function mod:OnDisable()
    mod:UnregisterEvent("RUNE_POWER_UPDATE")
    mod:UnregisterEvent("RUNE_TYPE_UPDATE")
+   mod:UnregisterEvent("UNIT_MAXRUNIC_POWER")
+   mod:UnregisterEvent("UNIT_RUNIC_POWER")
+   mod:UnregisterEvent("UNIT_MAXMANA")
+   mod:UnregisterEvent("UNIT_MANA")
    mod:UnregisterEvent("PLAYER_REGEN_ENABLED")
    mod:UnregisterEvent("PLAYER_REGEN_DISABLED")
 end
@@ -558,7 +590,7 @@ do
       -- Check each bar for update
       for id,barData in ipairs(db.bars) do
 	 bar = runebars[id]
-	 if barData.type == mod.RUNE_BAR then
+	 if bar and barData.type == mod.RUNE_BAR then
 	    data = runeData[barData.runeid]
 	    -- Handle death runes changes
 	    if bar.type ~= data.type then
@@ -683,7 +715,24 @@ do
    function mod:RUNE_TYPE_UPDATE(_, rune)
       runeData[rune].type = GetRuneType(rune)
       mod:UpdateBars()
-   end   
+   end
+
+   function mod:UpdateRunicPower(event,unit)
+      if unit and unit ~= "player" then return end
+      local current = UnitPower("player")
+      local max = UnitPowerMax("player")
+      local bar
+      for id,data in ipairs(db.bars) do
+	 bar = runebars[id]
+	 if data.type == mod.RUNIC_BAR and bar then	    
+	    bar.value = current
+	    bar:SetMaxValue(max)
+	    if db.showTimer then
+	       bar.timerLabel:SetText(tostring(current))
+	    end
+	 end
+      end
+   end
 end
 
 function mod:AnchorMoved(cbk, group, button)
@@ -745,7 +794,13 @@ end
 
 -- Set up the default rune 1 to 6 bars
 function mod:SetDefaultBars()
-   if db.bars then return end -- already set up
+   if db.bars then
+      if not db.bars[7] then
+	 -- make sure we got the runic bar
+	 db.bars[7] = { type = 1, title = "Runic", shorttitle = "R" }
+      end
+      return
+   end
    local bars = {}
    for id = 1,6 do
       bars[#bars+1] = {
@@ -838,14 +893,16 @@ function mod:SetOrientation(orientation)
    vertical = (orientation == 2 or orientation == 4)
    for id,data in ipairs(db.bars) do
       local bar = runebars[id]
-      if db.showIcon and db.animateIcons then
-	 bar.icon:ClearAllPoints()
-	 bar.icon:SetPoint("CENTER", bar.spark)
-	 bar.spark:SetAlpha(0)
-      else
-	 bar.spark:SetAlpha(db.showSpark and 1 or 0)
+      if bar then 
+	 if db.showIcon and db.animateIcons then
+	    bar.icon:ClearAllPoints()
+	    bar.icon:SetPoint("CENTER", bar.spark)
+	    bar.spark:SetAlpha(0)
+	 else
+	    bar.spark:SetAlpha(db.showSpark and 1 or 0)
+	 end
+	 mod:SetBarLabel(id, data)
       end
-      mod:SetBarLabel(id, data)
    end
    
    mod:SetIconScale(db.iconScale)
@@ -1039,6 +1096,7 @@ options = {
 	 showLabel = {
 	    type = "toggle",
 	    name = "Show labels",
+	    desc = "Show labels on the bars indicating the rune type. Note the timer cannot be shown on the icon while labels are enabled.",
 	    set = function(_,val) db.showLabel = val mod:UpdateLabels() end,
 	    order = 10,
 	    
@@ -1060,8 +1118,9 @@ options = {
 	 timerOnIcon = {
 	    type = "toggle",
 	    name = "Show timer on icon",
+	    desc = "Show the countdown timer on top of the icon instead of on the bar. This option is only available when labels are hidden.",
 	    set = function(_,val) db.timerOnIcon = val mod:UpdateLabels() end,
-	    disabled = function() return not (db.showTimer and db.showIcon) end,
+	    disabled = function() return db.showLabel or not (db.showTimer and db.showIcon) end,
 	    order = 25
 	 },
 	 showIcon = {
@@ -1320,15 +1379,12 @@ options = {
 	    name = "Type",
 	    values = { "Runic Bar", "Rune Bar" },
 	    order = 10,
+	    hidden = true,
 	 },
 	 runeid = {
 	    type = "select",
 	    name = "Rune #",
-	    values = {
-	       "Blood #1", "Blood #2",
-	       "Unholy #1", "Unholy #2",
-	       "Frost #1", "Frost #2",
-	    },
+	    values = runeValues,
 	    hidden = "NotBarTypeRuneBar",
 	    order = 20,
 	 },
@@ -1346,22 +1402,18 @@ options = {
 	    hidden = "BarTypeRuneBar",
 	    order = 28,
 	 },
-	 color = {
-	    type = "color",
-	    name = "Color",
-	    desc = "Bar color",
-	    hasAlpha = true,
-	    set = "SetBarColorOpt",
-	    get = "GetBarColorOpt",
-	    hidden = "BarTypeRuneBar", 
-	    order = 30,
+	 hide = {
+	    type = "toggle",
+	    name = "Hide bar",
+	    desc = "Toggle visibility of this bar.",
+	    order = 40,
 	 },
-	 delete = {
-	    type = "execute",
-	    name = "Delete bar",
-	    func = function() end,
-	    order = 20000
-	 },
+--	 delete = {
+--	    type = "execute",
+--	    name = "Delete bar",
+--	    func = function() end,
+--	    order = 20000
+--	 },
       }
    },
    bars = {
@@ -1375,7 +1427,8 @@ options = {
 	    type = "execute",
 	    name = "Add a new bar",
 	    desc = "Create a new bar.",
-	    func = "AddNewBar"
+	    func = "AddNewBar",
+	    hidden = true
 	 }
       }
    }   
@@ -1425,7 +1478,9 @@ function mod:SetBarOption(info, val)
       data.icon = comboIcons[val]
    end
    data[var] = val
+   mod:CreateBars()
    mod.UpdateBars()
+   mod:SetupBarOptions(true) 
 end
 
 
@@ -1464,12 +1519,17 @@ function mod:SetupBarOptions(reload)
       end
    end
    if db.bars then
-      for id in ipairs(db.bars) do
+      for id,data in ipairs(db.bars) do
 	 local bar = {}
+	 bar.order = id
 	 for key,val in pairs(options.runebar) do
 	    bar[key] = val
 	 end
-	 bar.name = bar.name .. id
+	 if data.type == mod.RUNE_BAR then
+	    bar.name = runeValues[data.runeid]
+	 else
+	    bar.name = "Runic bar"
+	 end
 	 args[tostring(id)] = bar
       end
    end
@@ -1488,7 +1548,7 @@ function mod:SetupOptions()
    mod:OptReg(": Bar Layout", options.sizing, "Layout and Sorting")
    mod:OptReg(": Font & Texture", options.looks, "Font & Texture")
    mod.text = mod:OptReg(": Profiles", options.profile, "Profiles")
---   mod:SetupBarOptions()
+   mod:SetupBarOptions()
    
 
    mod:OptReg("Magic Runes CmdLine", {
