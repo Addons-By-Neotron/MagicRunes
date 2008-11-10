@@ -140,6 +140,7 @@ local defaults = {
       readyFlash = true,
       readyFlashDuration = 0.5,
       sound = "None",
+      soundOccasion = 1, -- Never
       font = "Friz Quadrata TT",
       fontsize = 14,
       hideAnchor = true,
@@ -581,12 +582,17 @@ do
 		  bar.timerLabel:SetText("")
 		  bar.notReady = nil
 		  if bar.flashing then bar:StopFlash() end
-		  if bar.gcdnotify and db.readyFlash then
-		     tmp = #readyFlash
-		     readyFlash[tmp+1] = { start = now, bar = bar }
-		     if tmp == 0 and numActiveRunes == 0 then
-			bars:SetScript("OnUpdate", mod.UpdateBars)
+		  if bar.gcdnotify then
+		     if db.readyFlash then
+			tmp = #readyFlash
+			readyFlash[tmp+1] = { start = now, bar = bar }
+			if tmp == 0 and numActiveRunes == 0 then
+			   bars:SetScript("OnUpdate", mod.UpdateBars)
+			end
 		     end
+		     if db.soundOccasion == 3 then
+			playAlert = true
+		     end		     
 		  end
 		  bar.gcdnotify = nil
 	       end
@@ -602,7 +608,9 @@ do
 			   bar:SetAlpha(db.alphaGCD)
 			end
 			bar.gcdnotify = true
-			playAlert = true
+			if db.soundOccasion == 2 then
+			   playAlert = true
+			end
 		     elseif db.fadeAlphaGCD and not bar.flashing then
 			tmp = data.remaining/gcd
 			bar:SetAlpha(db.alphaGCD*tmp + idleAlphaLevel*(1-tmp))			
@@ -925,14 +933,26 @@ options = {
 	 sound = {
 	    type = 'select',
 	    dialogControl = 'LSM30_Sound',
-	    name = 'Alert Sound',
-	    desc = 'Sound to play when a rune is one global cooldown away from being ready.',
+	    name = 'Alert sound effect',
+	    desc = 'The sound effect to play when the sound alert trigger occurs.',
 	    values = AceGUIWidgetLSMlists.sound,
 	    set = "SetSoundFile",
+	    disabled = function() return db.soundOccasion == 1 end,
+	    order = 100,
+	 },
+	 soundOccasion = {
+	    type = "select",
+	    name = "Alert sound trigger",
+	    desc = "When to play the alert sound: On GCD => play when the remaining cooldown of a run goes below the global cooldown. On readiness => play when a rune becomes ready for use.",
+	    values = {
+	       "Never", "On GCD", "On readiness"
+	    },
+	    set = function(_,val) db.soundOccasion = val end,
+	    order = 90,
 	 },
 	 preset = {
 	    type = "select", 
-	    name = "Load Preset",
+	    name = "Load preset",
 	    desc = "Presets are primarily here to give you a few ideas on how you can configure the bars. Note that the presets do now change font, texture or color options. The global scale is also not changed.",
 	    values = "GetPresetList",
 	    width  = "full",
