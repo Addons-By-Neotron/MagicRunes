@@ -59,6 +59,7 @@ local gcd = 1.5
 local flashTimer
 local playerInCombat = InCombatLockdown()
 local idleAlphaLevel
+local readyFlash2
 
 if Logger then
    Logger:Embed(MagicRunes)
@@ -134,6 +135,8 @@ local defaults = {
       displayType = mod.RUNE_DISPLAY,
       flashMode = 2,
       flashTimes = 2,
+      readyFlash = true,
+      readyFlashDuration = 0.5,
       sound = "None",
       font = "Friz Quadrata TT",
       fontsize = 14,
@@ -146,7 +149,6 @@ local defaults = {
       showIcon = true,
       showLabel = true,
       showTimer = true,
-      showTooltip = true,
       alphaOOC = 1.0,
       alphaReady = 1.0,
       alphaGCD = 1.0,
@@ -216,6 +218,11 @@ function mod:GetBarColorOpt(arg)
    end
 end
 
+function mod:SetReadyFlashOpt(info, val)
+   db[info[#info]] = val
+   readyFlash2 = db.readyFlashDuration/2
+end
+
 function mod:SetDefaultColors()
    -- Populate default colors
    if not db.colors then
@@ -238,7 +245,7 @@ function mod:OnInitialize()
    MagicRunesDB.presets = nil
    db = self.db.profile
    idleAlphaLevel = playerInCombat and db.alphaReady or db.alphaOOC
-   
+   readyFlash2 = db.readyFlashDuration/2   
    -- bar types
    mod.RUNIC_BAR = 1
    mod.RUNE_BAR  = 2
@@ -369,6 +376,8 @@ function mod:ReleaseBar(bar)
    bar.type  = nil
    bar.notReady = nil
    bar.iconPath = nil
+   bar.overlayTexture:SetAlpha(0)
+   bar.overlayTexture:Hide()
    bar.gcdnotify = false
    bar:SetScript("OnEnter", nil)
    bar:SetScript("OnLeave", nil)
@@ -389,8 +398,16 @@ function mod:CreateBars()
    
    for id,data in ipairs(db.bars) do
       local bar = bars:NewCounterBar("MagicRunes:"..id, "", db.showRemaining and 0 or 10, 10)
---      bar:SetScript("OnEnter", Bar_OnEnter);
---      bar:SetScript("OnLeave", Bar_OnLeave);
+      if not bar.overlayTexture then
+	 bar.overlayTexture =  bar:CreateTexture(nil, "OVERLAY")
+	 bar.overlayTexture:SetTexture("Interface/Buttons/UI-Listbox-Highlight2")
+	 bar.overlayTexture:SetBlendMode("ADD")
+	 bar.overlayTexture:SetVertexColor(1,1,1,0.6)
+	 bar.overlayTexture:SetAllPoints()
+      else
+	 bar.overlayTexture:Show()
+      end
+      bar.overlayTexture:SetAlpha(0)
       bar:EnableMouse(true)
       bar.barId  = id
       bar:SetFrameLevel(id)
@@ -415,6 +432,7 @@ function mod:SetIconScale(val)
       bar.icon:SetHeight(db.thickness * val)
    end
 end
+
 function mod:SetTexture()
    bars:SetTexture(media:Fetch("statusbar", db.texture))
    for _,bar in ipairs(runebars) do
@@ -453,7 +471,7 @@ function mod:UpdateLabels()
 	 if db.timerOnIcon then
 	    bar.timerLabel:SetPoint("CENTER", bar.icon, "CENTER")
 	 else
-	    bar.timerLabel:SetPoint("RIGHT", bar, "RIGHT", -6, 0)
+	    bar:UpdateOrientationLayout()
 	 end
       else bar:HideTimerLabel() end
    end
@@ -466,76 +484,14 @@ function mod:OnDisable()
    mod:UnregisterEvent("PLAYER_REGEN_DISABLED")
 end
 
-local function Bar_UpdateTooltip(self, tooltip)
--- 
---    tooltip:ClearLines()
---    local tti = tooltipInfo[self.name]
---    if tti and tti.name then
---       tooltip:AddLine(tti.name, 0.85, 0.85, 0.1)
---       tooltip:AddLine(fmt(lvlFmt, tti.level, tti.type), 1, 1, 1)
---       tooltip:AddLine(" ")
---       tooltip:AddDoubleLine("Health:", fmt("%.0f%%", 100*self.value/self.maxValue), nil, nil, nil, 1, 1, 1)
---       if tti.target then
--- 	 tooltip:AddDoubleLine("Target:", db.coloredNames and coloredNames[tti.target] or tti.target, nil, nil, nil, 1, 1, 1)
---       end
---       if self.color and colorToText[self.color] and InCombatLockdown() then
--- 	 local c = db.colors[self.color]
--- 	 tooltip:AddDoubleLine("Status:", colorToText[self.color], nil, nil, nil, c[1], c[2], c[3])
---       else
--- 	 local c = db.colors.Normal
--- 	 tooltip:AddDoubleLine("Status:", "Idle", nil, nil, nil, c[1], c[2], c[3])
---       end
---       if mmtargets[self.name] then
--- 	 tooltip:AddDoubleLine("MagicMarker Assigment:", mmtargets[self.name].cc, nil, nil, nil, 1, 1, 1)
---       end
---       tooltip:AddLine(" ")
---       if next(tti.targets) then 
--- 	 tooltip:AddLine("Currently targeted by:", 0.85, 0.85, 0.1);
--- 	 local sorted = mod.get()
--- 	 for id in pairs(tti.targets) do
--- 	    sorted[#sorted+1] = id
--- 	 end
--- 	 sort(sorted)
--- 	 if db.coloredNames then
--- 	    for id,name in ipairs(sorted) do
--- 	       sorted[id] = coloredNames[name]
--- 	    end
--- 	 end
--- 	 tooltip:AddLine(tconcat(sorted, ", "), 1, 1, 1, 1)
--- 	 mod.del(sorted)
---       else
--- 	 tooltip:AddLine("Not targeted by anyone.");
---       end
---    else
---       tooltip:AddLine(self.label:GetText(), 0.85, 0.85, 0.1)
---       tooltip:AddLine(" ")
---       tooltip:AddLine("Not targeted by anyone.");
---    end
---    tooltip:Show()
-end
-
-local function Bar_OnEnter()
-   if not db.showTooltip  then return end
-   local tooltip = GameTooltip
-   local self = this
-   tooltip:SetOwner(self, "ANCHOR_CURSOR")
-   Bar_UpdateTooltip(self, tooltip)
-   this.tooltipShowing = true
-end
-
-local function Bar_OnLeave()
-   if not db.showTooltip  then return end
-   GameTooltip:Hide()
-   this.tooltipShowing = nil
-end
-
 do
    local numActiveRunes = 0
    local activeRunes = {}
    
    local runeData = { {}, {}, {}, {}, {}, {} }
    local now, updated, data, bar, playAlert, tmp
-
+   local readyFlash = {}
+   
    function mod:UpdateRemainingTimes()
       if db.flashTimes and db.flashMode == 2 then
 	 RefreshBarColors()
@@ -564,11 +520,41 @@ do
    function mod.UpdateBars()
       now = GetTime()
       playAlert = nil
+
+      -- Update the value and remaining time for all runes
       for id = 1,6 do
 	 data = runeData[id]
 	 data.remaining = max(data.start + data.duration - now, 0)
 	 data.value = data.duration - data.remaining
       end
+      mod.readyFlash = readyFlash
+      -- Do the "rune is ready" flashing
+      if db.readyFlash and #readyFlash > 0 then
+	 if #readyFlash > 0 then
+--	    mod:debug("Updating flashies: %d", #readyFlash)
+	 end
+
+	 for id,data in pairs(readyFlash) do
+	    if data then
+	       local duration = now - data.start
+	       bar = data.bar
+	       if not runeData[db.bars[bar.barId].runeid].ready or duration > db.readyFlashDuration then
+		  readyFlash[id] = nil
+		  data.bar.overlayTexture:SetAlpha(0)
+		  mod:debug("Removing flashy at %d", id)
+	       elseif duration >= readyFlash2 then
+		  data.bar.overlayTexture:SetAlpha((db.readyFlashDuration - duration)/readyFlash2)
+	       else
+		  data.bar.overlayTexture:SetAlpha(duration/readyFlash2)
+	       end
+	    end
+	 end
+	 if #readyFlash == 0 and numActiveRunes == 0 then
+	    bars:SetScript("OnUpdate", nil)
+	 end
+      end
+      
+      
       -- Check each bar for update
       for id,barData in ipairs(db.bars) do
 	 bar = runebars[id]
@@ -598,6 +584,12 @@ do
 		  bar.timerLabel:SetText("")
 		  bar.notReady = nil
 		  if bar.flashing then bar:StopFlash() end
+		  if bar.gcdnotify and db.readyFlash then
+		     readyFlash[#readyFlash+1] = { start = now, bar = bar }
+		     mod:debug("flashing bar %d at %d", bar.barId, #readyFlash);
+		     bars:SetScript("OnUpdate", mod.UpdateBars)
+
+		  end
 		  bar.gcdnotify = nil
 	       end
 	    else
@@ -665,7 +657,7 @@ do
 	    activeRunes[rune] = nil
 	    numActiveRunes = numActiveRunes - 1
 	 end
-	 if numActiveRunes == 0 then
+	 if numActiveRunes == 0 and #readyFlash == 0 then
 	    bars:SetScript("OnUpdate", nil)
 	    mod.UpdateBars()
 	 end
@@ -716,6 +708,7 @@ function mod:SetBarColor(bar, color)
    end
    bar:SetColorAt(0, color[1], color[2], color[3], color[4])
    bar:SetColorAt(1, color[1], color[2], color[3], color[4])
+   bar.overlayTexture:SetVertexColor(min(1,rf+0.2), min(1, gf+0.2), min(1,bf+0.2), bar.overlayTexture:GetAlpha())
 end
 
 function mod:PLAYER_REGEN_ENABLED()
@@ -844,6 +837,7 @@ function mod:SetOrientation(orientation)
       end
       mod:SetBarLabel(id, data)
    end
+   
    mod:SetIconScale(db.iconScale)
    mod:UpdateLabels()
 end
@@ -894,12 +888,6 @@ options = {
       handler = mod,
       order = 1,
       args = {
---	 showTooltip = {
---	    type = "toggle",
---	    width = "full",
---	    name = "Show mouseover tooltip", 
---	    get = function() return db.showTooltip end,
---	 },
 	 showRemaining = {
 	    type = "toggle",
 	    name = "Show remaining time",
@@ -1052,7 +1040,7 @@ options = {
 	 },
 	 animateIcons = {
 	    type = "toggle",
-	    name = "Animate Icons",
+	    name = "Animate icons",
 	    desc = "If enabled, the icons will move with the bar. If the bar texture is hidden, you'll get a display simply showing the cooldown using icons.",
 	    set = function(_, val) db.animateIcons = val mod:SetOrientation() end,
 	    order = 35,
@@ -1068,7 +1056,7 @@ options = {
 	 },
 	 flashMode = {
 	    type = "select",
-	    name = "Flash Mode",
+	    name = "Flash mode",
 	    desc = "Type of flashing to use to indicate imminent readiness.",
 	    values = {
 	       "None",
@@ -1080,12 +1068,28 @@ options = {
 	 },
 	 flashTimes = {
 	    type = "range",
-	    name = "Number of Flashes",
+	    name = "Number of flashes",
 	    desc = "Number of times to flash bars when the remaining is less than the GCD. Set to zero to disable flashing.",
 	    min = 1, max = 10, step = 1,
 	    set = "SetFlashTimer",
 	    hidden = function() return db.flashMode == 1 end,
 	    order = 50,	    
+	 },
+	 readyFlash = {
+	    type = "toggle",
+	    name = "Flash when ready",
+	    desc = "When a rune cooldown is finish, flash the bar as an extra notification source.",
+	    set = "SetReadyFlashOpt",
+	    order = 60,
+	 },
+	 readyFlashDuration = {
+	    type = "range",
+	    name = "Ready flash duration",
+	    desc = "The time in seconds that the bar should flash when a rune becomes ready.",
+	    set = "SetReadyFlashOpt",
+	    min = 0.01, max = 2.5, step = 0.001,
+	    disabled = function() return not db.readyFlash end,
+	    order = 70,
 	 },
       },
    },
