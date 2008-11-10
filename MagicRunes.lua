@@ -136,6 +136,7 @@ local defaults = {
    profile = {
       displayType = mod.RUNE_DISPLAY,
       flashMode = 2,
+      hideBlizzardFrame = true,
       flashTimes = 2,
       readyFlash = true,
       readyFlashDuration = 0.5,
@@ -249,6 +250,7 @@ function mod:OnInitialize()
    db = self.db.profile
    idleAlphaLevel = playerInCombat and db.alphaReady or db.alphaOOC
    readyFlash2 = db.readyFlashDuration/2   
+
    -- bar types
    mod.RUNIC_BAR = 1
    mod.RUNE_BAR  = 2
@@ -782,6 +784,8 @@ local varChanges = {
 }
 
 function mod:ApplyProfile()
+   mod:HandleBlizzardRuneFrame()
+
    -- configure based on saved data
    for from,to in pairs(varChanges) do
       if db[from] then
@@ -886,6 +890,20 @@ function mod:SetGlobalOption(info, val)
    mod.UpdateBars()
 end
 
+
+function mod:HandleBlizzardRuneFrame(info,val)
+   if info then
+      db[info[#info]] = val
+   end
+   if RuneFrame then
+      if db.hideBlizzardFrame then
+	 RuneFrame:Hide()
+      else
+	 RuneFrame:Show()
+      end
+   end
+end
+
 options = { 
    general = {
       type = "group",
@@ -907,15 +925,12 @@ options = {
 	    width = "full",
 	    set = function() mod:ToggleLocked() end,
 	 },
---	 growup = {
---	    type = "toggle",
---	    name = "Reverse growth direction",
---	    width = "full",
---	    set = function()
---		     db.growup = not db.growup
---		     bars:ReverseGrowth(db.growup)
---		  end,
---	 },
+	 hideBlizzardFrame = {
+	    type = "toggle",
+	    name = "Hide the Blizzard rune frame",
+	    width = "full",
+	    set = "HandleBlizzardRuneFrame",
+	 },
 	 hideAnchor = {
 	    type = "toggle",
 	    name = "Hide anchor when bars are locked.",
