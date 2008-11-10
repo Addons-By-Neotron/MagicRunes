@@ -26,59 +26,61 @@ end
 
 MagicRunes = LibStub("AceAddon-3.0"):NewAddon("MagicBars", "AceEvent-3.0", "LibBars-1.0", 
 					      "AceTimer-3.0", "AceConsole-3.0")
+local mod = MagicRunes
 local R = LibStub("AceConfigRegistry-3.0")
 
 -- Silently fail embedding if it doesn't exist
 local LibStub = LibStub
 local LDB = LibStub:GetLibrary("LibDataBroker-1.1")
+local AceGUIWidgetLSMlists = AceGUIWidgetLSMlists
 
 local Logger = LibStub("LibLogger-1.0", true)
 
 local C = LibStub("AceConfigDialog-3.0")
 local DBOpt = LibStub("AceDBOptions-3.0")
 local media = LibStub("LibSharedMedia-3.0")
-local mod = MagicRunes
-local currentbars
 
-local InCombatLockdown = InCombatLockdown
-local fmt = string.format
-local time = GetTime
-local max = max
 local GetRuneCooldown = GetRuneCooldown
 local GetRuneType = GetRuneType
-local type = type
-local pairs = pairs
+local GetTime = GetTime
+local InCombatLockdown = InCombatLockdown
+local PlaySoundFile = PlaySoundFile
+local fmt = string.format
+local max = max
 local min = min
-local tostring = tostring
-local next = next
-local sort = sort
+local pairs = pairs
+local ipairs = ipairs
 local select = select
+local sort = sort
+local tostring = tostring
+local tonumber = tonumber
+local type = type
 local unpack = unpack
+local PI = math.pi
+
 local vertical 
 local gcd = 1.5
 local flashTimer
 local playerInCombat = InCombatLockdown()
 local idleAlphaLevel
 local readyFlash2
+local addonEnabled = false
+local db, isInGroup
+local bars 
+local runebars = {}
 
 if Logger then
    Logger:Embed(MagicRunes)
 else
    -- Enable info messages
    mod.info = function(self, ...) mod:Print(fmt(...)) end
-   mod.error = info
-   mod.warn = info
+   mod.error = mod.info
+   mod.warn = mod.info
    -- But disable debugging
    mod.debug = function(self, ...) end
    mod.trace = mod.debug
    mod.spam = mod.debug
 end
-
-local addonEnabled = false
-local db, isInGroup
-local bars 
-
-runebars = {}
 
 if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
    local runecache = { }
@@ -100,7 +102,7 @@ if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
       else
 	 runecache[id] = nil
       end
-      mod:RUNE_POWER_UPDATE(_, id, ready)
+      mod:RUNE_POWER_UPDATE(nil, id, ready)
    end
 end
 
@@ -489,7 +491,7 @@ do
    local activeRunes = {}
    
    local runeData = { {}, {}, {}, {}, {}, {} }
-   local now, updated, data, bar, playAlert, tmp
+   local now, updated, data, bar, playAlert, tmp, newValue
    local readyFlash = {}
    
    function mod:UpdateRemainingTimes()
@@ -536,11 +538,11 @@ do
 	       bar = data.bar
 	       if not runeData[db.bars[bar.barId].runeid].ready or duration > db.readyFlashDuration then
 		  readyFlash[id] = nil
-		  data.bar.overlayTexture:SetAlpha(0)
+		  bar.overlayTexture:SetAlpha(0)
 	       elseif duration >= readyFlash2 then
-		  data.bar.overlayTexture:SetAlpha((db.readyFlashDuration - duration)/readyFlash2)
+		  bar.overlayTexture:SetAlpha((db.readyFlashDuration - duration)/readyFlash2)
 	       else
-		  data.bar.overlayTexture:SetAlpha(duration/readyFlash2)
+		  bar.overlayTexture:SetAlpha(duration/readyFlash2)
 	       end
 	    end
 	 end
@@ -580,9 +582,11 @@ do
 		  bar.notReady = nil
 		  if bar.flashing then bar:StopFlash() end
 		  if bar.gcdnotify and db.readyFlash then
-		     readyFlash[#readyFlash+1] = { start = now, bar = bar }
-		     bars:SetScript("OnUpdate", mod.UpdateBars)
-
+		     tmp = #readyFlash
+		     readyFlash[tmp+1] = { start = now, bar = bar }
+		     if tmp == 0 and numActiveRunes == 0 then
+			bars:SetScript("OnUpdate", mod.UpdateBars)
+		     end
 		  end
 		  bar.gcdnotify = nil
 	       end
@@ -747,7 +751,7 @@ function mod:SetFlashTimer(_, val)
    if val then db.flashTimes = val end
    
    if db.flashTimes and db.flashTimes > 0 and db.flashMode == 3 then
-      flashTimer = db.flashTimes * 2 * math.pi
+      flashTimer = db.flashTimes * 2 * PI
    else
       flashTimer = nil
    end
