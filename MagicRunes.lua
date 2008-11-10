@@ -530,10 +530,6 @@ do
       mod.readyFlash = readyFlash
       -- Do the "rune is ready" flashing
       if db.readyFlash and #readyFlash > 0 then
-	 if #readyFlash > 0 then
---	    mod:debug("Updating flashies: %d", #readyFlash)
-	 end
-
 	 for id,data in pairs(readyFlash) do
 	    if data then
 	       local duration = now - data.start
@@ -541,7 +537,6 @@ do
 	       if not runeData[db.bars[bar.barId].runeid].ready or duration > db.readyFlashDuration then
 		  readyFlash[id] = nil
 		  data.bar.overlayTexture:SetAlpha(0)
-		  mod:debug("Removing flashy at %d", id)
 	       elseif duration >= readyFlash2 then
 		  data.bar.overlayTexture:SetAlpha((db.readyFlashDuration - duration)/readyFlash2)
 	       else
@@ -586,7 +581,6 @@ do
 		  if bar.flashing then bar:StopFlash() end
 		  if bar.gcdnotify and db.readyFlash then
 		     readyFlash[#readyFlash+1] = { start = now, bar = bar }
-		     mod:debug("flashing bar %d at %d", bar.barId, #readyFlash);
 		     bars:SetScript("OnUpdate", mod.UpdateBars)
 
 		  end
@@ -943,7 +937,6 @@ options = {
 		     if db.preset ~= preset then
 			db.preset = preset
 			for var,val in pairs(mod.presets[preset].data) do
---			   mod:debug("Setting %s to %s", var, tostring(val))
 			   db[var] = val
 			end
 			mod:ApplyProfile()
@@ -1418,7 +1411,6 @@ do
    end
    function mod:NotifyChange()
       for _,name in ipairs(configPanes) do
---	 mod:debug("Notifying change for "..name)
 	 R:NotifyChange(name)
       end
    end
