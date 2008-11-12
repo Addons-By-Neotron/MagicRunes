@@ -348,9 +348,7 @@ function mod:OnEnable()
    mod:RegisterEvent("RUNE_TYPE_UPDATE")
    mod:RegisterEvent("PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_REGEN_DISABLED")
-   mod:RegisterEvent("UNIT_MANA", "UpdateRunicPower")
    mod:RegisterEvent("UNIT_RUNIC_POWER", "UpdateRunicPower")
-   mod:RegisterEvent("UNIT_MAXMANA", "UpdateRunicPower")
    mod:RegisterEvent("UNIT_MAXRUNIC_POWER", "UpdateRunicPower")
 end
 
@@ -484,8 +482,6 @@ function mod:OnDisable()
    mod:UnregisterEvent("RUNE_TYPE_UPDATE")
    mod:UnregisterEvent("UNIT_MAXRUNIC_POWER")
    mod:UnregisterEvent("UNIT_RUNIC_POWER")
-   mod:UnregisterEvent("UNIT_MAXMANA")
-   mod:UnregisterEvent("UNIT_MANA")
    mod:UnregisterEvent("PLAYER_REGEN_ENABLED")
    mod:UnregisterEvent("PLAYER_REGEN_DISABLED")
 end
