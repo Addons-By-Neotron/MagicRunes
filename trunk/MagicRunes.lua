@@ -20,6 +20,11 @@ along with MagicBars.  If not, see <http://www.gnu.org/licenses/>.
 **********************************************************************
 ]]
 
+if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
+   print("MagicRunes: Not loading since you're not on a Death Knight!")
+   return
+end
+
 if not LibStub:GetLibrary("LibBars-1.0", true) then
    LoadAddOn("LibBars-1.0") -- hrm..
 end
@@ -85,31 +90,6 @@ else
    mod.trace = mod.debug
    mod.spam = mod.debug
 end
-
-if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
-   local runecache = { }
-   local GRC = GetRuneCooldown
-   function GetRuneCooldown(id)
-      if runecache[id] then
-	 return unpack(runecache[id])
-      else
-	 return GRC(id)
-      end
-   end
-
-   function mod:TriggerRune(id, ready, timeout)
-      id = id or random(6)
-      if not ready then
-	 runecache[id] = {
-	    GetTime()-(timeout or 0), 10, false
-	 }
-      else
-	 runecache[id] = nil
-      end
-      mod:RUNE_POWER_UPDATE(nil, id, ready)
-   end
-end
-
 
 local options
 
@@ -271,8 +251,6 @@ function mod:OnInitialize()
    end
 
    -- initial rune status
-   for id = 1,6 do mod:UpdateRuneStatus(id) end
-   
    mod:SetDefaultColors()
    
    if LDB then
@@ -283,19 +261,10 @@ function mod:OnInitialize()
 			      label = "Magic Runes",
 			      icon = "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death",
 			      tooltiptext = ("|cffffff00Left click|r to open the configuration screen.\n"..
-					     (mod.TriggerRune and "|cffffff00Middle click|r to emulate rune use.\n" or "")..
 					     "|cffffff00Right click|r to toggle the Magic Target window lock."), 
 			      OnClick = function(clickedframe, button)
 					   if button == "LeftButton" then
 					      mod:ToggleConfigDialog()
-					   elseif button == "MiddleButton" and
-					      mod.TriggerRune then
-					      mod:TriggerRune(6)
-					      mod:TriggerRune(4)
-					      mod:TriggerRune(2, false, 1.5)
-					      mod:TriggerRune(1, false, 3.0)
-					      mod:TriggerRune(3, false, 4.5)
-					      mod:TriggerRune(5, false, 6.0)
 					   elseif button == "RightButton" then
 					      mod:ToggleLocked()
 					   end
@@ -602,10 +571,7 @@ do
 	    end
 
 	    if data.ready or data.remaining <= 0 then
-	       -- DEBUG FOR NON-DK CLASSES
-	       if mod.TriggerRune and not data.ready then 
-		  mod:TriggerRune(barData.runeid, true)
-	       end
+
 	       if bar.notReady or numActiveRunes == 0 then
 		  bar:SetAlpha(idleAlphaLevel)
 		  if db.showRemaining then
@@ -871,6 +837,7 @@ function mod:ApplyProfile()
    bars:SetSortFunction(sortFunctions[db.sortMethod])
    bars:SetScale(db.scale)
    bars:SetSpacing(db.spacing)
+   for id = 1,6 do mod:UpdateRuneStatus(id) end
    mod.UpdateBars()
    bars:SortBars()
 end
