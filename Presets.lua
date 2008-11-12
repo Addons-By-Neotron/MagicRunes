@@ -1,4 +1,5 @@
 
+if not MagicRunes then return end -- not on a DK
 
 local mod = MagicRunes
 mod.presets = {

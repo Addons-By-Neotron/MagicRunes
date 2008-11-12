@@ -6,10 +6,10 @@
 ## DefaultState: enabled
 ## X-Category: Raid
 ## X-eMail: neotron@gmail.com
-## XXLoadManagers: AddonLoader
+## LoadManagers: AddonLoader
 ## OptionalDeps: Ace3, LibBars-1.0, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets
 ## SavedVariables: MagicRunesDB
-## XXX-LoadOn-Class: DEATHKNIGHT
+## X-LoadOn-Class: DEATHKNIGHT
 
 # Library files
 embeds.xml
