@@ -756,23 +756,22 @@ end
 
 -- Set up the default rune 1 to 6 bars
 function mod:SetDefaultBars()
-   if db.bars then
-      if not db.bars[7] then
-	 -- make sure we got the runic bar
-	 db.bars[7] = { type = 1, title = "Runic", shorttitle = "R" }
+   local bars = db.bars or {}
+   if not db.bars then
+      for id = 1,6 do
+	 bars[#bars+1] = {
+	    type = 2,
+	    runeid = id,
+	 }
       end
-      return
+      db.bars = bars
    end
-   local bars = {}
-   for id = 1,6 do
-      bars[#bars+1] = {
-	 type = 2,
-	 runeid = id,
-      }
+   if not bars[7] then
+      -- make sure we got the runic bar
+      bars[7] = { type = 1, title = "Runic", shorttitle = "R" }
    end
-   db.bars = bars
+   mod:SetupBarOptions(true)
 end
-
 
 function mod:SetFlashTimer(_, val)
    if val then db.flashTimes = val end
