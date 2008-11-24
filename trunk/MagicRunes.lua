@@ -527,12 +527,14 @@ do
       now = GetTime()
       playAlert = nil
 
+      local currentRunicPower = UnitPower("player")
       -- Update the value and remaining time for all runes
       for id = 1,6 do
 	 data = runeData[id]
-	 data.remaining = max(data.start + data.duration - now, 0)
-	 data.value = data.duration - data.remaining
+	 data.remaining = max((data.start or 0) + (data.duration or 0) - now, 0)
+	 data.value = (data.duration or 10) - (data.remaining or 0)
       end
+
       -- Do the "rune is ready" flashing
       if db.readyFlash and #readyFlash > 0 then
 	 for id,data in pairs(readyFlash) do
@@ -558,81 +560,95 @@ do
       -- Check each bar for update
       for id,barData in ipairs(db.bars) do
 	 bar = runebars[id]
-	 if bar and barData.type == mod.RUNE_BAR then
-	    data = runeData[barData.runeid]
-	    -- Handle death runes changes
-	    if bar.type ~= data.type then
-	       local name, icon, type, color = GetRuneInfo(barData.runeid)
-	       bar.type = data.type
-	       bar:SetLabel(name) 
-	       bar:SetIcon(icon) 
-	       mod:SetBarColor(bar, color)
-	    end
-
-	    if data.ready or data.remaining <= 0 then
-	       bar:SetAlpha(idleAlphaLevel)
-	       if bar.notReady or numActiveRunes == 0 then
-		  if db.showRemaining then
-		     bar:SetValue(0)
-		  else
-		     bar:SetValue(bar.maxValue)
-		  end
-		  bar.timerLabel:SetText("")
-		  bar.notReady = nil
-		  if bar.flashing then bar:StopFlash() end
-		  if bar.gcdnotify then
-		     if db.readyFlash then
-			tmp = #readyFlash
-			readyFlash[tmp+1] = { start = now, bar = bar }
-			if tmp == 0 and numActiveRunes == 0 then
-			   bars:SetScript("OnUpdate", mod.UpdateBars)
-			end
-		     end
-		     if db.soundOccasion == 3 then
-			playAlert = true
-		     end		     
-		  end
-		  bar.gcdnotify = nil
-	       end
-	    else
-	       newValue = db.showRemaining and data.remaining or data.value
-	       if bar.value ~= newValue then
-		  if data.remaining < gcd then
-		     if not bar.gcdnotify then 
-			if flashTimer and not bar.flashing then
-			   bar:SetAlpha(1.0)
-			   bar:Flash(data.remaining/flashTimer)
-			else
-			   bar:SetAlpha(db.alphaGCD)
-			end
-			bar.gcdnotify = true
-			if db.soundOccasion == 2 then
-			   playAlert = true
-			end
-		     elseif db.fadeAlphaGCD and not bar.flashing then
-			tmp = data.remaining/gcd
-			bar:SetAlpha(db.alphaGCD*tmp + idleAlphaLevel*(1-tmp))			
-		     end
-		  else
-		     if db.fadeAlpha then
-			tmp = (data.remaining-gcd)/(10-gcd)
-			bar:SetAlpha(db.alphaActive*tmp + db.alphaGCD*(1-tmp))
-		     else
-			bar:SetAlpha(db.alphaActive)
-		     end
-		  end
-		  bar:SetValue(newValue)
+	 if bar then
+	    if barData.type == mod.RUNIC_BAR then
+	       if bar.value ~= currentRunicPower then
+		  bar:SetValue(currentRunicPower)
 		  if db.showTimer then
-		     if data.remaining == 0 then
-			bar.timerLabel:SetText("")
-		     elseif data.remaining > gcd or db.secondsOnly then
-			bar.timerLabel:SetText(fmt("%.0f", data.remaining))
-		     else
-			bar.timerLabel:SetText(fmt("%.1f", data.remaining))
-		     end
+		     bar.timerLabel:SetText(tostring(currentRunicPower))
 		  end
 	       end
-	       bar.notReady = true
+	       if bar.value == 0 then
+		  bar:SetAlpha(idleAlphaLevel)
+	       else
+		  bar:SetAlpha(1.0)
+	       end
+	    elseif barData.type == mod.RUNE_BAR then
+	       data = runeData[barData.runeid]
+	       -- Handle death runes changes
+	       if bar.type ~= data.type then
+		  local name, icon, type, color = GetRuneInfo(barData.runeid)
+		  bar.type = data.type
+		  bar:SetLabel(name) 
+		  bar:SetIcon(icon) 
+		  mod:SetBarColor(bar, color)
+	       end
+	       
+	       if data.ready or data.remaining <= 0 then
+		  bar:SetAlpha(idleAlphaLevel)
+		  if bar.notReady or numActiveRunes == 0 then
+		     if db.showRemaining then
+			bar:SetValue(0)
+		     else
+			bar:SetValue(bar.maxValue)
+		     end
+		     bar.timerLabel:SetText("")
+		     bar.notReady = nil
+		     if bar.flashing then bar:StopFlash() end
+		     if bar.gcdnotify then
+			if db.readyFlash then
+			   tmp = #readyFlash
+			   readyFlash[tmp+1] = { start = now, bar = bar }
+			   if tmp == 0 and numActiveRunes == 0 then
+			      bars:SetScript("OnUpdate", mod.UpdateBars)
+			   end
+			end
+			if db.soundOccasion == 3 then
+			   playAlert = true
+			end		     
+		     end
+		     bar.gcdnotify = nil
+		  end
+	       else
+		  newValue = db.showRemaining and data.remaining or data.value
+		  if bar.value ~= newValue then
+		     if data.remaining < gcd then
+			if not bar.gcdnotify then 
+			   if flashTimer and not bar.flashing then
+			      bar:SetAlpha(1.0)
+			      bar:Flash(data.remaining/flashTimer)
+			   else
+			      bar:SetAlpha(db.alphaGCD)
+			   end
+			   bar.gcdnotify = true
+			   if db.soundOccasion == 2 then
+			      playAlert = true
+			   end
+			elseif db.fadeAlphaGCD and not bar.flashing then
+			   tmp = data.remaining/gcd
+			   bar:SetAlpha(db.alphaGCD*tmp + idleAlphaLevel*(1-tmp))			
+			end
+		     else
+			if db.fadeAlpha then
+			   tmp = (data.remaining-gcd)/(10-gcd)
+			   bar:SetAlpha(db.alphaActive*tmp + db.alphaGCD*(1-tmp))
+			else
+			   bar:SetAlpha(db.alphaActive)
+			end
+		     end
+		     bar:SetValue(newValue)
+		     if db.showTimer then
+			if data.remaining == 0 then
+			   bar.timerLabel:SetText("")
+			elseif data.remaining > gcd or db.secondsOnly then
+			   bar.timerLabel:SetText(fmt("%.0f", data.remaining))
+			else
+			   bar.timerLabel:SetText(fmt("%.1f", data.remaining))
+			end
+		     end
+		  end
+		  bar.notReady = true
+	       end
 	    end
 	 end
       end
@@ -654,7 +670,7 @@ do
    
    function mod:RUNE_POWER_UPDATE(_, rune, usable)
       if rune >= 7 then return end
-
+      
       mod:UpdateRuneStatus(rune)
       if usable then
 	 if activeRunes[rune] then
@@ -662,8 +678,10 @@ do
 	    numActiveRunes = numActiveRunes - 1
 	 end
 	 if numActiveRunes == 0 and #readyFlash == 0 then
-	    bars:SetScript("OnUpdate", nil)
-	    mod.UpdateBars()
+	    if UnitPower("player") == 0 then
+	       bars:SetScript("OnUpdate", nil)
+	       mod.UpdateBars()
+	    end
 	 end
       else
 	 if not activeRunes[rune] then
@@ -698,16 +716,23 @@ do
 	 if data.type == mod.RUNIC_BAR and bar then	    
 	    bar.value = current
 	    bar:SetMaxValue(max)
-	    if db.showTimer then
+	    if db.showTimer then 
 	       bar.timerLabel:SetText(tostring(current))
 	    end
 	 end
       end
+      if numActiveRunes == 0 and #readyFlash == 0 then
+	 if current == 0 then
+	    bars:SetScript("OnUpdate", nil)
+	    mod.UpdateBars()
+	 else 
+	    bars:SetScript("OnUpdate", mod.UpdateBars)
+	 end
+      end      
    end
 end
 
-function mod:AnchorMoved(cbk, group, button)
-   
+function mod:AnchorMoved(cbk, group, button)   
    db.point = { group:GetPoint() }
 end
 
