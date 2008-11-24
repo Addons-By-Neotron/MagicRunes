@@ -350,6 +350,9 @@ function mod:OnEnable()
    mod:RegisterEvent("PLAYER_REGEN_DISABLED")
    mod:RegisterEvent("UNIT_RUNIC_POWER", "UpdateRunicPower")
    mod:RegisterEvent("UNIT_MAXRUNIC_POWER", "UpdateRunicPower")
+   mod:RegisterEvent("PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED")
+   mod:RegisterEvent("PLAYER_DEAD", "PLAYER_REGEN_ENABLED")
+   mod:RegisterEvent("PLAYER_ALIVE", "PLAYER_REGEN_ENABLED")
 end
 
 -- We mess around with bars so restore them to a prestine state
@@ -364,7 +367,6 @@ function mod:ReleaseBar(bar)
    bar.gcdnotify = false
    bar:SetScript("OnEnter", nil)
    bar:SetScript("OnLeave", nil)
-   bar:EnableMouse(false)
    bar:SetValue(0)
    bar:SetScale(1)
    bar.spark:SetAlpha(1)
@@ -394,7 +396,6 @@ function mod:CreateBars()
 	    bar.overlayTexture:Show()
 	 end
 	 bar.overlayTexture:SetAlpha(0)
-	 bar:EnableMouse(true)
 	 bar.barId  = id
 	 bar:SetFrameLevel(id)
 	 runebars[id] = bar
@@ -484,6 +485,9 @@ function mod:OnDisable()
    mod:UnregisterEvent("UNIT_RUNIC_POWER")
    mod:UnregisterEvent("PLAYER_REGEN_ENABLED")
    mod:UnregisterEvent("PLAYER_REGEN_DISABLED")
+   mod:UnregisterEvent("PLAYER_UNGHOST")
+   mod:UnregisterEvent("PLAYER_DEAD")
+   mod:UnregisterEvent("PLAYER_ALIVE")
 end
 
 do
@@ -529,7 +533,6 @@ do
 	 data.remaining = max(data.start + data.duration - now, 0)
 	 data.value = data.duration - data.remaining
       end
-      mod.readyFlash = readyFlash
       -- Do the "rune is ready" flashing
       if db.readyFlash and #readyFlash > 0 then
 	 for id,data in pairs(readyFlash) do
@@ -567,9 +570,8 @@ do
 	    end
 
 	    if data.ready or data.remaining <= 0 then
-
+	       bar:SetAlpha(idleAlphaLevel)
 	       if bar.notReady or numActiveRunes == 0 then
-		  bar:SetAlpha(idleAlphaLevel)
 		  if db.showRemaining then
 		     bar:SetValue(0)
 		  else
@@ -679,6 +681,13 @@ do
       mod:UpdateBars()
    end
 
+   function mod:RefreshRuneTypes()
+      for rune = 1,6 do
+	 runeData[rune].type = GetRuneType(rune)
+      end
+      mod:UpdateBars()
+   end
+   
    function mod:UpdateRunicPower(event,unit)
       if unit and unit ~= "player" then return end
       local current = UnitPower("player")
@@ -733,14 +742,14 @@ end
 function mod:PLAYER_REGEN_ENABLED()
    playerInCombat = false
    idleAlphaLevel = db.alphaOOC
-   mod.UpdateBars()
+   mod:RefreshRuneTypes()
 end
 
 
 function mod:PLAYER_REGEN_DISABLED()
    playerInCombat = true
    idleAlphaLevel = db.alphaReady
-   mod.UpdateBars()
+   mod:RefreshRuneTypes()
 end
 
 -- Config option handling below
