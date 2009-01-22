@@ -144,7 +144,7 @@ local defaults = {
 
 function mod:GetRuneInfo(runeid)
    local type = GetRuneType(runeid)
-   local info = runeInfo[type]
+   local info = runeInfo[type] or runeInfo[1] -- seems sometimes the rune id is not correct. hmm
    if mod._vertical then 
       return info[2], info[3], type, db.colors[info[1]]
    else

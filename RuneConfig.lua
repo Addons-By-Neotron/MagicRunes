@@ -1,3 +1,6 @@
+
+if not MagicRunes then return end -- not a DK
+
 -- upvalues
 local ipairs = ipairs
 local pairs = pairs
