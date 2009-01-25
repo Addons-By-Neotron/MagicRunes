@@ -1,5 +1,6 @@
 
 if not MagicRunes then return end -- not a DK
+local L = LibStub("AceLocale-3.0"):GetLocale("MagicRunes", false)
 
 -- upvalues
 local ipairs = ipairs
@@ -28,9 +29,9 @@ local defaultColors = {
 }
 
 local runeValues = {
-   "Blood #1", "Blood #2",
-   "Unholy #1", "Unholy #2",
-   "Frost #1", "Frost #2",
+   L["Blood #1"], L["Blood #2"],
+   L["Unholy #1"], L["Unholy #2"],
+   L["Frost #1"], L["Frost #2"],
 }
 local options = { 
    general = {
@@ -42,34 +43,34 @@ local options = {
       args = {
 	 showRemaining = {
 	    type = "toggle",
-	    name = "Show remaining time",
-	    desc = "Instead showing the time elapsed on the cooldown, show the time remaining. This means that the bars will shrink as the cooldown lowers instead of grow.",
+	    name = L["Show remaining time"],
+	    desc = L["Instead showing the time elapsed on the cooldown, show the time remaining. This means that the bars will shrink as the cooldown lowers instead of grow."],
 	    width = "full",
 	    set = function(_,val) db.showRemaining = val mod:UpdateRemainingTimes() end
 	 },
 	 minimapIcon = {
 	    type = "toggle",
-	    name = "Enable minimap icon",
-	    desc = "Show am icon to open the config at the Minimap",
+	    name = L["Enable minimap icon"],
+	    desc = L["Show an icon to open the config at the Minimap"],
 	    get = function() return not db.minimapIcon.hide end,
 	    set = function(info, value) db.minimapIcon.hide = not value; LDBIcon[value and "Show" or "Hide"](LDBIcon, "MagicRunes") end,
 	    disabled = function() return not LDBIcon end,
 	 },
 	 locked = {
 	    type = "toggle",
-	    name = "Lock bar positions",
+	    name = L["Lock bar positions"],
 	    width = "full",
 	    set = function() mod:ToggleLocked() end,
 	 },
 	 hideBlizzardFrame = {
 	    type = "toggle",
-	    name = "Hide the Blizzard rune frame",
+	    name = L["Hide the Blizzard rune frame"],
 	    width = "full",
 	    set = "HandleBlizzardRuneFrame",
 	 },
 	 hideAnchor = {
 	    type = "toggle",
-	    name = "Hide anchor when bars are locked.",
+	    name = L["Hide anchor when bars are locked."],
 	    width = "full",	
 	    set = function()
 		     db.hideAnchor = not db.hideAnchor
@@ -84,8 +85,8 @@ local options = {
 	 sound = {
 	    type = 'select',
 	    dialogControl = 'LSM30_Sound',
-	    name = 'Alert sound effect',
-	    desc = 'The sound effect to play when the sound alert trigger occurs.',
+	    name = L["Alert sound effect"],
+	    desc = L["The sound effect to play when the sound alert trigger occurs."],
 	    values = AceGUIWidgetLSMlists.sound,
 	    set = "SetSoundFile",
 	    disabled = function() return db.soundOccasion == 1 end,
@@ -93,18 +94,18 @@ local options = {
 	 },
 	 soundOccasion = {
 	    type = "select",
-	    name = "Alert sound trigger",
-	    desc = "When to play the alert sound: On GCD => play when the remaining cooldown of a run goes below the global cooldown. On readiness => play when a rune becomes ready for use.",
+	    name = L["Alert sound trigger"],
+	    desc = L["When to play the alert sound: On GCD => play when the remaining cooldown of a run goes below the global cooldown. On readiness => play when a rune becomes ready for use."],
 	    values = {
-	       "Never", "On GCD", "On readiness"
+	       L["Never"], L["On GCD"], L["On readiness"]
 	    },
 	    set = function(_,val) db.soundOccasion = val end,
 	    order = 90,
 	 },
 	 preset = {
 	    type = "select", 
-	    name = "Load preset",
-	    desc = "Presets are primarily here to give you a few ideas on how you can configure the bars. Note that the presets do now change font, texture or color options. The global scale is also not changed.",
+	    name = L["Load preset"],
+	    desc = L["Presets are primarily here to give you a few ideas on how you can configure the bars. Note that the presets do now change font, texture or color options. The global scale is also not changed."],
 	    values = "GetPresetList",
 	    width  = "full",
 	    order = 0,
@@ -123,7 +124,7 @@ local options = {
    },
    colors = {
       type = "group",
-      name = "Colors",
+      name = L["Colors"],
       order = 9,
       handler = mod,
       set = "SetColorOpt",
@@ -131,43 +132,43 @@ local options = {
       args = {
 	 Blood = {
 	    type = "color",
-	    name = "Blood",
-	    desc = "Color used for blood rune bars.",
+	    name = L["Blood"],
+	    desc = L["Color used for blood rune bars."],
 	    hasAlpha = true,
 	    order = 1,
 	 },
 	 Unholy = {
 	    type = "color",
-	    name = "Unholy",
-	    desc = "Color used for unholy rune bars.",
+	    name = L["Unholy"],
+	    desc = L["Color used for unholy rune bars."],
 	    hasAlpha = true,
 	    order = 2,
 	 },
 	 Frost = {
 	    type = "color",
-	    name = "Frost",
-	    desc = "Color used for frost rune bars.",
+	    name = L["Frost"],
+	    desc = L["Color used for frost rune bars."],
 	    hasAlpha = true,
 	    order = 3,
 	 },
 	 Death = {
 	    type = "color",
-	    name = "Death",
-	    desc = "Color used for death rune bars.",
+	    name = L["Death"],
+	    desc = L["Color used for death rune bars."],
 	    hasAlpha = true,
 	    order = 4,
 	 },
 	 Runic = {
 	    type = "color",
-	    name = "Death",
-	    desc = "Color used for the runic power bar.",
+	    name = L["Runic"],
+	    desc = L["Color used for the runic power bar."],
 	    hasAlpha = true,
 	    order = 5,
 	 },
 	 Background = {
 	    type = "color",
-	    name = "Background",
-	    desc = "Color used for background texture.",
+	    name = L["Background"],
+	    desc = L["Color used for background texture."],
 	    hasAlpha = true,
 	    order = 10,
 	 },
@@ -175,78 +176,78 @@ local options = {
    },
    deco = {
       type = "group",
-      name = "Decoration and Effects",
+      name = L["Decoration and Effects"],
       handler = mod,
       get = "GetGlobalOption",
       args = {
 	 showLabel = {
 	    type = "toggle",
-	    name = "Show labels",
-	    desc = "Show labels on the bars indicating the rune type. Note the timer cannot be shown on the icon while labels are enabled.",
+	    name = L["Show labels"],
+	    desc = L["Show labels on the bars indicating the rune type. Note the timer cannot be shown on the icon while labels are enabled."],
 	    set = function(_,val) db.showLabel = val mod:UpdateLabels() end,
 	    order = 10,
 	    
 	 },
 	 showTimer = {
 	    type = "toggle",
-	    name = "Show timer",
+	    name = L["Show timer"],
 	    set = function(_,val) db.showTimer = val mod:UpdateLabels() end,
 	    order = 20,
 	 },	 
 	 secondsOnly = {
 	    type = "toggle",
-	    name = "Seconds only",
-	    desc = "Normally the time is shown with one decimal place when the remaining cooldown is less than the global cooldown. If this toggled on, only seconds will be shown.",
+	    name = L["Seconds only"],
+	    desc = L["Normally the time is shown with one decimal place when the remaining cooldown is less than the global cooldown. If this toggled on, only seconds will be shown."],
 	    set = function(_,val) db.secondsOnly = val mod:UpdateLabels() end,
 	    disabled = function() return not db.showTimer end,
 	    order = 24,
 	 },
 	 timerOnIcon = {
 	    type = "toggle",
-	    name = "Show timer on icon",
-	    desc = "Show the countdown timer on top of the icon instead of on the bar. This option is only available when labels are hidden.",
+	    name = L["Show timer on icon"],
+	    desc = L["Show the countdown timer on top of the icon instead of on the bar. This option is only available when labels are hidden."],
 	    set = function(_,val) db.timerOnIcon = val mod:UpdateLabels() end,
 	    disabled = function() return db.showLabel or not (db.showTimer and db.showIcon) end,
 	    order = 25
 	 },
 	 showIcon = {
 	    type = "toggle",
-	    name = "Show icons",
+	    name = L["Show icons"],
 	    set = function(_,val) db.showIcon = val mod:UpdateIcons() end,
 	    order = 30
 	 },
 	 animateIcons = {
 	    type = "toggle",
-	    name = "Animate icons",
-	    desc = "If enabled, the icons will move with the bar. If the bar texture is hidden, you'll get a display simply showing the cooldown using icons.",
+	    name = L["Animate icons"],
+	    desc = L["If enabled, the icons will move with the bar. If the bar texture is hidden, you'll get a display simply showing the cooldown using icons."],
 	    set = function(_, val) db.animateIcons = val mod:SetOrientation() end,
 	    order = 35,
 	    disabled = function() return not db.showIcon end
 	 },
 	 showSpark = {
 	    type = "toggle",
-	    name = "Show spark",
-	    desc = "Toggle whether or not to show the spark on active bars.",
+	    name = L["Show spark"],
+	    desc = L["Toggle whether or not to show the spark on active bars."],
 	    set = function(_,val) db.showSpark = val mod:SetOrientation() end,
 	    order = 38,
 	    disabled = function() return db.animateIcons end
 	 },
 	 flashMode = {
 	    type = "select",
-	    name = "Flash mode",
-	    desc = "Type of flashing to use to indicate imminent readiness.",
+	    name = L["Flash mode"],
+	    desc = L["Type of flashing to use to indicate imminent readiness."],
 	    values = {
-	       "None",
-	       "Color Flash",
-	       "Alpha Flash"
+	       L["None"],
+	       L["Color Flash"],
+	       L["Alpha Flash"]
 	    },
 	    set = function(_,val) db.flashMode = val mod:SetFlashTimer() end,
 	    order = 40,
 	 },
 	 flashTimes = {
 	    type = "range",
-	    name = "Number of flashes",
-	    desc = "Number of times to flash bars when the remaining is less than the GCD. Set to zero to disable flashing.",
+	    name = L["Number of flashes"],
+	    desc = L["Number of times to flash bars when the remaining is less than the GCD. Set to zero to disable flashing."],
 	    min = 1, max = 10, step = 1,
 	    set = "SetFlashTimer",
 	    hidden = function() return db.flashMode == 1 end,
@@ -254,15 +255,15 @@ local options = {
 	 },
 	 readyFlash = {
 	    type = "toggle",
-	    name = "Flash when ready",
-	    desc = "When a rune cooldown is finish, flash the bar as an extra notification source.",
+	    name = L["Flash when ready"],
+	    desc = L["When a rune cooldown is finish, flash the bar as an extra notification source."],
 	    set = "SetReadyFlashOpt",
 	    order = 60,
 	 },
 	 readyFlashDuration = {
 	    type = "range",
-	    name = "Ready flash duration",
-	    desc = "The time in seconds that the bar should flash when a rune becomes ready.",
+	    name = L["Ready flash duration"],
+	    desc = L["The time in seconds that the bar should flash when a rune becomes ready."],
 	    set = "SetReadyFlashOpt",
 	    min = 0.01, max = 2.5, step = 0.001,
 	    disabled = function() return not db.readyFlash end,
@@ -272,14 +273,14 @@ local options = {
    },
    alpha = {
       type = "group",
-      name = "Alpha Settings",
+      name = L["Alpha Settings"],
       handler = mod,
       get = "GetGlobalOption",
       args = {
 	 alphaOOC = {
 	    type = "range",
-	    name = "Out of combat alpha",
-	    desc = "Alpha level for ready runes when out of combat.",
+	    name = L["Out of combat alpha"],
+	    desc = L["Alpha level for ready runes when out of combat."],
 	    width = "full",
 	    min = 0, max = 1, step = 0.01,
 	    set = "SetGlobalOption",
@@ -287,8 +288,8 @@ local options = {
 	 },
 	 alphaReady = {
 	    type = "range",
-	    name = "In-Combat ready rune alpha",
-	    desc = "Alpha level of ready runes when in combat.",
+	    name = L["In-Combat ready rune alpha"],
+	    desc = L["Alpha level of ready runes when in combat."],
 	    width = "full",
 	    min = 0, max = 1, step = 0.01,
 	    set = "SetGlobalOption",
@@ -296,8 +297,8 @@ local options = {
 	 },
 	 alphaGCD = {
 	    type = "range",
-	    name = "In-GCD active rune alpha",
-	    desc = "Alpha level of active runes when the remaining cooldown is shorter the global cooldown.",
+	    name = L["In-GCD active rune alpha"],
+	    desc = L["Alpha level of active runes when the remaining cooldown is shorter the global cooldown."],
 	    width = "full",
 	    min = 0, max = 1, step = 0.01,
 	    set = "SetGlobalOption",
@@ -305,8 +306,8 @@ local options = {
 	 },
 	 alphaActive = {
 	    type = "range",
-	    name = "Out-of-GCD active rune alpha",
-	    desc = "Alpha level of active runes when the remaining cooldown is longer than the global cooldown.",
+	    name = L["Out-of-GCD active rune alpha"],
+	    desc = L["Alpha level of active runes when the remaining cooldown is longer than the global cooldown."],
 	    width = "full",
 	    min = 0, max = 1, step = 0.01,
 	    set = "SetGlobalOption",
@@ -314,16 +315,16 @@ local options = {
 	 },
 	 fadeAlpha = {
 	    type = "toggle",
-	    name = "Fade alpha level of active runes",
-	    desc = "Fade alpha level between the in GCD and out of GCD alpha level. This can be used to make the rune cooldown displays become incrementally more visible as the cooldown decreases.", 
+	    name = L["Fade alpha level of active runes"],
+	    desc = L["Fade alpha level between the in GCD and out of GCD alpha level. This can be used to make the rune cooldown displays become incrementally more visible as the cooldown decreases."], 
 	    width = "full",
 	    set = "SetGlobalOption",
 	    order = 140,
 	 },
 	 fadeAlphaGCD = {
 	    type = "toggle",
-	    name = "Fade alpha from gcd to ready",
-	    desc = "Fade the alpha level between the GCD level and the ready level. This option is ignored if the alpha flash notification is enabled.",
+	    name = L["Fade alpha from gcd to ready"],
+	    desc = L["Fade the alpha level between the GCD level and the ready level. This option is ignored if the alpha flash notification is enabled."],
 	    width = "full",
 	    set = "SetGlobalOption",
 	    disabled = function() return db.flashMode == 3 end,
@@ -333,14 +334,14 @@ local options = {
    },
    sizing = {
       type = "group",
-      name = "Bar Layout",
+      name = L["Bar Layout"],
       order = 4,
       handler = mod,
       get = "GetGlobalOption",
       args = {
 	 length = {
 	    type = "range",
-	    name = "Length",
+	    name = L["Length"],
 	    width = "full",
 	    min = 20, max = 500, step = 0.01,
 	    set = function(_,val) db.length = val mod:SetSize() end,
@@ -348,7 +349,7 @@ local options = {
 	 }, 
 	 thickness = {
 	    type = "range",
-	    name = "Thickness",
+	    name = L["Thickness"],
 	    width = "full",
 	    min = 1, max = 150, step = 0.01,
 	    set = function(_,val) db.thickness = val mod:SetSize() end,
@@ -356,7 +357,7 @@ local options = {
 	 }, 
 	 spacing = {
 	    type = "range",
-	    name = "Spacing",
+	    name = L["Spacing"],
 	    width = "full",
 	    min = -30, max = 30, step = 0.01,
 	    set = function(_,val) db.spacing = val bars:SetSpacing(val) end,
@@ -364,7 +365,7 @@ local options = {
 	 }, 
 	 scale = {
 	    type = "range",
-	    name = "Overall Scale",
+	    name = L["Overall Scale"],
 	    width = "full",
 	    min = 0.01, max = 5, step = 0.01,
 	    set = function(_,val) db.scale = val bars:SetScale(val) end,
@@ -372,7 +373,7 @@ local options = {
 	 },
 	 iconScale = {
 	    type = "range",
-	    name = "Icon Scale",
+	    name = L["Icon Scale"],
 	    width = "full",
 	    min = 0.01, max = 50, step = 0.01,
 	    set = function(_,val) db.iconScale = val mod:SetIconScale(val) end,
@@ -380,7 +381,7 @@ local options = {
 	 },
 	 orientation = {
 	    type = "select",
-	    name = "Orientation",
+	    name = L["Orientation"],
 	    values = {
 	       "Horizontal, Left",
 	       "Vertical, Bottom",
@@ -392,7 +393,7 @@ local options = {
 	 },
 	 sortMethod = {
 	    type = "select",
-	    name = "Sort Method",
+	    name = L["Sort Method"],
 	    set = function(_,val) db.sortMethod = val bars:SetSortFunction(mod.sortFunctions[val]) bars:SortBars() end,
 	    values = {
 	       "Rune Order",
@@ -405,7 +406,7 @@ local options = {
 	 },
 	 reverseSort = {
 	    type = "toggle",
-	    name = "Reverse Sorting",
+	    name = L["Reverse Sorting"],
 	    set = function(_,val) db.reverseSort = val bars:SortBars() end,
 	    order = 60
 	 },
@@ -413,7 +414,7 @@ local options = {
    },
    looks = {
       type = "group",
-      name = "Font and Texture",
+      name = L["Font and Texture"],
       order = 3,
       handler = mod,
       get = "GetGlobalOption",
@@ -421,8 +422,8 @@ local options = {
 	 texture = {
 	    type = 'select',
 	    dialogControl = 'LSM30_Statusbar',
-	    name = 'Texture',
-	    desc = 'The texture used for active bars.',
+	    name = L["Texture"],
+	    desc = L["The texture used for active bars."],
 	    values = AceGUIWidgetLSMlists.statusbar, 
 	    set = function(_,val) db.texture = val mod:SetTexture() end,
 	    order = 3
@@ -430,8 +431,8 @@ local options = {
 	 bgtexture = {
 	    type = 'select',
 	    dialogControl = 'LSM30_Statusbar',
-	    name = 'Background Texture',
-	    desc = 'The background texture for the bars. .',
+	    name = L["Background Texture"],
+	    desc = L["The background texture for the bars. ."],
 	    values = AceGUIWidgetLSMlists.statusbar, 
 	    set = function(_,val) db.bgtexture = val mod:SetTexture() end,
 	    order = 4
@@ -439,8 +440,8 @@ local options = {
 	 font = {
 	    type = 'select',
 	    dialogControl = 'LSM30_Font',
-	    name = 'Font',
-	    desc = 'Font used on the bars',
+	    name = L["Font"],
+	    desc = L["Font used on the bars"],
 	    values = AceGUIWidgetLSMlists.font, 
 	    set = function(_,key) db.font = key  mod:SetFont() end,
 	    order = 2,
@@ -449,7 +450,7 @@ local options = {
 	    order = 1, 
 	    type = "range",
 	    width="full",
-	    name = "Font size",
+	    name = L["Font size"],
 	    min = 1, max = 30, step = 0.01,
 	    set = function(_,val) db.fontsize = val mod:SetFont() end,
 	    order = 1
@@ -458,45 +459,45 @@ local options = {
    },
    runebar = {
       type = "group",
-      name = "Bar #",
+      name = L["Bar #"],
       args = {
 	 type = {
 	    type = "select",
-	    name = "Type",
-	    values = { "Runic Bar", "Rune Bar" },
+	    name = L["Type"],
+	    values = { L["Runic Bar"], L["Rune Bar"] },
 	    order = 10,
 	    hidden = true,
 	 },
 	 runeid = {
 	    type = "select",
-	    name = "Rune #",
+	    name = L["Rune #"],
 	    values = runeValues,
 	    hidden = "NotBarTypeRuneBar",
 	    order = 20,
 	 },
 	 title = {
 	    type = "input",
-	    name = "Label",
-	    desc = "Label used on horizontal bars",
+	    name = L["Label"],
+	    desc = L["Label used on horizontal bars"],
 	    hidden = "BarTypeRuneBar",
 	    order = 25,
 	 },
 	 shorttitle = {
 	    type = "input",
-	    name = "Short Label",
-	    desc = "Label used for vertical bars",
+	    name = L["Short Label"],
+	    desc = L["Label used for vertical bars"],
 	    hidden = "BarTypeRuneBar",
 	    order = 28,
 	 },
 	 hide = {
 	    type = "toggle",
-	    name = "Hide bar",
-	    desc = "Toggle visibility of this bar.",
+	    name = L["Hide bar"],
+	    desc = L["Toggle visibility of this bar."],
 	    order = 40,
 	 },
 --	 delete = {
 --	    type = "execute",
---	    name = "Delete bar",
+	 --	    name = L[L["Delete bar"]],
 --	    func = function() end,
 --	    order = 20000
 --	 },
@@ -504,15 +505,15 @@ local options = {
    },
    bars = {
       type = "group",
-      name = "Bar Configuration",
+      name = L["Bar Configuration"],
       handler = mod,
       set = "SetBarOption",
       get = "GetBarOption",
       args = {
 	 newbar = {
 	    type = "execute",
-	    name = "Add a new bar",
-	    desc = "Create a new bar.",
+	    name = L["Add a new bar"],
+	    desc = L["Create a new bar."],
 	    func = "AddNewBar",
 	    hidden = true
 	 }
@@ -580,12 +581,12 @@ do
 	 optname = "Magic Runes"..optname
 	 AC:RegisterOptionsTable(optname, tbl, cmd)
 	 if not cmd then
-	    regtable = ACD:AddToBlizOptions(optname, dispname, "Magic Runes")
+	    regtable = ACD:AddToBlizOptions(optname, dispname, L["Magic Runes"])
 	 end
       else
 	 AC:RegisterOptionsTable(optname, tbl, cmd)
 	 if not cmd then
-	    regtable = ACD:AddToBlizOptions(optname, "Magic Runes")
+	    regtable = ACD:AddToBlizOptions(optname, L["Magic Runes"])
 	 end
       end
       configPanes[#configPanes+1] = optname
@@ -616,7 +617,7 @@ function mod:SetupBarOptions(reload)
 	 if data.type == mod.RUNE_BAR then
 	    bar.name = runeValues[data.runeid]
 	 else
-	    bar.name = "Runic bar"
+	    bar.name = L["Runic bar"]
 	 end
 	 args[tostring(id)] = bar
       end
@@ -624,19 +625,19 @@ function mod:SetupBarOptions(reload)
    if reload then 
       R:NotifyChange("Magic Runes: Bar Configuration")
    else
-      mod:OptReg(": Bar Configuration", options.bars, "Bar Configuration")
+      mod:OptReg(": Bar Configuration", options.bars, L["Bar Configuration"])
    end
 end
 
 function mod:SetupOptions()
    options.profile = DBOpt:GetOptionsTable(self.db)
    mod.main = mod:OptReg("Magic Runes", options.general)
-   mod:OptReg(": Bar Alpha", options.alpha, "Alpha Levels")
-   mod:OptReg(": Bar Colors", options.colors, "Colors")
-   mod:OptReg(": Bar Decorations", options.deco, "Decorations")
-   mod:OptReg(": Bar Layout", options.sizing, "Layout and Sorting")
-   mod:OptReg(": Font & Texture", options.looks, "Font & Texture")
-   mod.text = mod:OptReg(": Profiles", options.profile, "Profiles")
+   mod:OptReg(": Bar Alpha", options.alpha, L["Alpha Levels"])
+   mod:OptReg(": Bar Colors", options.colors, L["Colors"])
+   mod:OptReg(": Bar Decorations", options.deco, L["Decorations"])
+   mod:OptReg(": Bar Layout", options.sizing, L["Layout and Sorting"])
+   mod:OptReg(": Font & Texture", options.looks, L["Font & Texture"])
+   mod.text = mod:OptReg(": Profiles", options.profile, L["Profiles"])
    mod:SetupBarOptions()
    
 
@@ -646,7 +647,7 @@ function mod:SetupOptions()
 		 args = {
 		    config = {
 		       type = "execute",
-		       name = "Show configuration dialog",
+		       name = L["Show configuration dialog"],
 		       func = function() mod:ToggleConfigDialog() end,
 		       dialogHidden = true
 		    },
@@ -838,7 +839,7 @@ function mod:SetDefaultBars()
    end
    if not bars[7] then
       -- make sure we got the runic bar
-      bars[7] = { type = 1, title = "Runic", shorttitle = "R" }
+      bars[7] = { type = 1, title = L["Runic"], shorttitle = "R" }
    end
    mod:SetupBarOptions(true)
 end

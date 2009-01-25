@@ -32,6 +32,8 @@ MagicRunes = LibStub("AceAddon-3.0"):NewAddon("MagicBars", "AceEvent-3.0", "LibB
 					      "AceTimer-3.0", "AceConsole-3.0")
 local mod = MagicRunes
 
+local L = LibStub("AceLocale-3.0"):GetLocale("MagicRunes", false)
+
 -- Silently fail embedding if it doesn't exist
 local LibStub = LibStub
 local LDBIcon = LibStub("LibDBIcon-1.0", true)
@@ -87,10 +89,10 @@ end
 local options
 
 local runeInfo = {
-   { "Blood",  "B", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood"}, 
-   { "Unholy", "U", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy"};
-   { "Frost",  "F", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost"},
-   { "Death",  "D", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" },
+   { L["Blood"],  "B", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood"}, 
+   { L["Unholy"], "U", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy"};
+   { L["Frost"],  "F", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost"},
+   { L["Death"],  "D", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" },
 }
 
 do
@@ -184,10 +186,9 @@ function mod:OnInitialize()
 	 LDB:NewDataObject("Magic Runes",
 			   {
 			      type =  "launcher", 
-			      label = "Magic Runes",
+			      label = L["Magic Runes"],
 			      icon = "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death",
-			      tooltiptext = ("|cffffff00Left click|r to open the configuration screen.\n"..
-					     "|cffffff00Right click|r to toggle the Magic Target window lock."), 
+			      tooltiptext =L["|cffffff00Left click|r to open the configuration screen.\n|cffffff00Right click|r to toggle the Magic Target window lock."], 
 			      OnClick = function(clickedframe, button)
 					   if button == "LeftButton" then
 					      mod:ToggleConfigDialog()
@@ -272,7 +273,7 @@ mod.sortFunctions = {
 
 function mod:OnEnable()
    if not bars then
-      bars = mod:NewBarGroup("Runes",nil,  db.length, db.thickness)
+      bars = mod:NewBarGroup(L["Runes"],nil,  db.length, db.thickness)
       bars:SetColorAt(1.00, 1, 1, 0, 1)
       bars:SetColorAt(0.00, 0.5, 0.5,0, 1)
       bars.RegisterCallback(self, "AnchorMoved")
