@@ -1,6 +1,6 @@
 
 if not MagicRunes then return end -- not on a DK
-
+local L = LibStub("AceLocale-3.0"):GetLocale("MagicRunes", false)
 local mod = MagicRunes
 mod.presets = {
    ["TinyBars"] = {
@@ -19,7 +19,7 @@ mod.presets = {
 	 ["texture"] = "Minimalist",
 	 ["timerOnIcon"] = false, 
       },
-      ["name"] = "Tiny horizontal bars",
+      ["name"] = L["Tiny horizontal bars"],
    },
    ["IconBar"] = {
       ["data"] = {
@@ -37,7 +37,7 @@ mod.presets = {
 	 ["texture"] = "Minimalist",
 	 ["timerOnIcon"] = false, 
       },
-      ["name"] = "Horizontal animated icons",
+      ["name"] = L["Horizontal animated icons"],
    },
    ["VertLabelBars"] = {
       ["data"] = {
@@ -55,7 +55,7 @@ mod.presets = {
 	 ["texture"] = "Minimalist",
 	 ["timerOnIcon"] = false, 
       },
-      ["name"] = "Vertical labeled bars",
+      ["name"] = L["Vertical labeled bars"],
    },
    ["TinyVertBars"] = {
       ["data"] = {
@@ -73,7 +73,7 @@ mod.presets = {
 	 ["texture"] = "Minimalist",
 	 ["timerOnIcon"] = false, 
       },
-      ["name"] = "Tiny vertical bars",
+      ["name"] = L["Tiny vertical bars"],
    },
    ["StaticLabeledBars"] = {
       ["data"] = {
@@ -91,7 +91,7 @@ mod.presets = {
 	 ["texture"] = "Minimalist",
 	 ["timerOnIcon"] = false, 
       },
-      ["name"] = "Horizontal labeled bars",
+      ["name"] = L["Horizontal labeled bars"],
    },
    ["VertIconBars"] = {
       ["data"] = {
@@ -109,10 +109,10 @@ mod.presets = {
 	 ["texture"] = "Minimalist",
 	 ["timerOnIcon"] = false, 
       },
-      ["name"] = "Vertical animated icons",
+      ["name"] = L["Vertical animated icons"],
    },
    ["HorizIconBar"] = {
-      ["name"] = "Static icons, timer, no bars",
+      ["name"] = L["Static icons, timer, no bars"],
       ["data"] = {
 	 ["showTimer"] = true,
 	 ["iconScale"] = 1.02,
