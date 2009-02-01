@@ -17,3 +17,4 @@ Locales.xml
 MagicRunes.lua
 RuneConfig.lua
 Presets.lua
+
