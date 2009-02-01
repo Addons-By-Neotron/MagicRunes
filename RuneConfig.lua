@@ -25,6 +25,9 @@ local defaultColors = {
    Frost  = { [1] = 0,   [2] = 0.5, [3] = 1,   [4] = 1 },
    Death  = { [1] = 0.8, [2] = 0,   [3] = 0.9, [4] = 1 },
    Runic =  { [1] = 0.2, [2] = 0.7, [3] = 1,   [4] = 1 },
+   BLOODPLAGUE = { [1] = 0,   [2] = 0.7, [3] = 0,   [4] = 1 },
+   FROSTFEVER  = { [1] = 0,   [2] = 0.5, [3] = 1,   [4] = 1 },
+   UNHOLYBLIGHT  = { [1] = 1,   [2] = 0,   [3] = 0,   [4] = 1 },
    Background = { [1] = 0.3, [2] = 0,3, [3] = 0.3, [4] = 0.5 },
 }
 
@@ -162,6 +165,27 @@ local options = {
 	    type = "color",
 	    name = L["Runic"],
 	    desc = L["Color used for the runic power bar."],
+	    hasAlpha = true,
+	    order = 5,
+	 },
+	 BLOODPLAGUE = {
+	    type = "color",
+	    name = function() return mod.spellCache.BLOODPLAGUE.name end,
+	    desc = L["Color used for the Blood Plague bar."],
+	    hasAlpha = true,
+	    order = 5,
+	 },
+	 FROSTFEVER = {
+	    type = "color",
+	    name = function() return mod.spellCache.FROSTFEVER.name end,
+	    desc = L["Color used for the Frost Fever bar."],
+	    hasAlpha = true,
+	    order = 5,
+	 },
+	 UNHOLYBLIGHT = {
+	    type = "color",
+	    name = function() return mod.spellCache.UNHOLYBLIGHT.name end,
+	    desc = L["Color used for the Unholy Blight bar."],
 	    hasAlpha = true,
 	    order = 5,
 	 },
@@ -461,13 +485,6 @@ local options = {
       type = "group",
       name = L["Bar #"],
       args = {
-	 type = {
-	    type = "select",
-	    name = L["Type"],
-	    values = { L["Runic Bar"], L["Rune Bar"] },
-	    order = 10,
-	    hidden = true,
-	 },
 	 runeid = {
 	    type = "select",
 	    name = L["Rune #"],
@@ -489,19 +506,22 @@ local options = {
 	    hidden = "BarTypeRuneBar",
 	    order = 28,
 	 },
+	 sortValue = {
+	    type = "range",
+	    min = -5, max = 10, step = 0.1,
+	    width ="full",
+	    name = L["Sorting Weight"],
+	    desc = L["The weight used when sorting this bar. A value less than 1 means it's sorted before rune bars. A value above 6 means it's sorted after the rune bars."],
+	    hidden = "BarTypeRuneBar",
+	    order = 35,
+	 },
 	 hide = {
 	    type = "toggle",
 	    name = L["Hide bar"],
 	    desc = L["Toggle visibility of this bar."],
 	    order = 40,
 	 },
---	 delete = {
---	    type = "execute",
-	 --	    name = L[L["Delete bar"]],
---	    func = function() end,
---	    order = 20000
---	 },
-      }
+      },
    },
    bars = {
       type = "group",
@@ -551,10 +571,14 @@ function mod:NotBarTypeRunicBar(info)
    return db.bars[tonumber(info[#info-1])].type ~= mod.RUNIC_BAR
 end
 
+function mod:NotBarTypeDotBar(info)
+   return db.bars[tonumber(info[#info-1])].type ~= mod.DOT_BAR
+end
+
 function mod:GetBarOption(info)
    local var = info[#info]
    local id  = tonumber(info[#info-1])
-   return db.bars[id][var]
+   return  db.bars[id][var]
 end
 
 function mod:SetBarOption(info, val)
@@ -567,9 +591,10 @@ function mod:SetBarOption(info, val)
       data.icon = mod:GetRuneIcon(val)
    end
    data[var] = val
+   
    mod:CreateBars()
+   mod:SortAllBars()
    mod.UpdateBars()
-   mod:SetupBarOptions(true) 
 end
 
 
@@ -597,7 +622,6 @@ do
 	 R:NotifyChange(name)
       end
    end
-
 end
 
 function mod:SetupBarOptions(reload)
@@ -616,8 +640,10 @@ function mod:SetupBarOptions(reload)
 	 end
 	 if data.type == mod.RUNE_BAR then
 	    bar.name = runeValues[data.runeid]
-	 else
+	 elseif bar.type == mod.RUNIC_BAR then
 	    bar.name = L["Runic bar"]
+	 else
+	    bar.name = data.title
 	 end
 	 args[tostring(id)] = bar
       end
@@ -839,7 +865,13 @@ function mod:SetDefaultBars()
    end
    if not bars[7] then
       -- make sure we got the runic bar
-      bars[7] = { type = 1, title = L["Runic"], shorttitle = "R" }
+      bars[7] = { type = mod.RUNIC_BAR, title = L["Runic"], shorttitle = "R" }
+   end
+   if not bars[10] then
+      -- make sure we got the dot bars
+      bars[8] =  { type = mod.DOT_BAR, title = mod.spellCache.BLOODPLAGUE.name, shorttitle = "BP", spell = "BLOODPLAGUE" } 
+      bars[9] =  { type = mod.DOT_BAR, title = mod.spellCache.FROSTFEVER.name, shorttitle = "FF", spell = "FROSTFEVER" }
+      bars[10] = { type = mod.DOT_BAR, title = mod.spellCache.UNHOLYBLIGHT.name, shorttitle = "UB", spell = "UNHOLYBLIGHT" }
    end
    mod:SetupBarOptions(true)
 end
@@ -848,9 +880,9 @@ function mod:SetFlashTimer(_, val)
    if val then db.flashTimes = val end
    
    if db.flashTimes and db.flashTimes > 0 and db.flashMode == 3 then
-      flashTimer = db.flashTimes * 2 * PI
+      mod.flashTimer = db.flashTimes * 2 * PI
    else
-      flashTimer = nil
+      mod.flashTimer = nil
    end
    mod:RefreshBarColors()
 end

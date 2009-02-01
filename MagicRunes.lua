@@ -63,14 +63,14 @@ local tostring = tostring
 local type = type
 local unpack = unpack
 local PI = math.pi
+local ceil = math.ceil
 
 local gcd = 1.5
-local flashTimer
 local playerInCombat = InCombatLockdown()
 local idleAlphaLevel
 local addonEnabled = false
 local db, isInGroup
-local bars 
+bars, hiddenBars = nil, nil
 local runebars = {}
 
 if Logger then
@@ -94,6 +94,8 @@ local runeInfo = {
    { L["Frost"],  "F", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost"},
    { L["Death"],  "D", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" },
 }
+
+mod.spellCache = {}
 
 do
    local comboIcons = {
@@ -144,7 +146,17 @@ local defaults = {
    }
 }
 
+local function CacheSpellInfo(name, id)
+   local localizedName, _, icon = GetSpellInfo(id)
+   mod.spellCache[name] = { name = localizedName, icon = icon, id = id, shortname = name }
+   mod.spellCache[localizedName] = mod.spellCache[name]
+end
+
 function mod:GetRuneInfo(runeid)
+   if not runeid or runeid < 1 or runeid > 6 then
+      return
+   end
+   
    local type = GetRuneType(runeid)
    local info = runeInfo[type] or runeInfo[1] -- seems sometimes the rune id is not correct. hmm
    if mod._vertical then 
@@ -166,9 +178,16 @@ function mod:OnInitialize()
    mod._readyFlash2 = db.readyFlashDuration/2   
    mod:UpdateLocalVariables()
 
+   -- spells
+   CacheSpellInfo("BLOODPLAGUE",  55078)
+   CacheSpellInfo("FROSTFEVER",   55095)
+   CacheSpellInfo("UNHOLYBLIGHT", 51379)
+
    -- bar types
    mod.RUNIC_BAR = 1
    mod.RUNE_BAR  = 2
+   mod.DOT_BAR   = 3
+   mod.BUFF_BAR  = 4
 
    -- upgrade
    if db.width then
@@ -194,7 +213,7 @@ function mod:OnInitialize()
 					      mod:ToggleConfigDialog()
 					   elseif button == "RightButton" then
 					      mod:ToggleLocked()
-					   end
+ 					   end
 					end,
 			   })
       if LDBIcon then
@@ -209,14 +228,14 @@ end
 mod.sortFunctions = {   
    function(a, b) -- BarId
       if db.reverseSort then
-	 return (a.barId or 100) > (b.barId or 100)
+	 return a.sortValue > b.sortValue
       else
-	 return (a.barId or 100) < (b.barId or 100)
+	 return a.sortValue < b.sortValue
       end
    end,
    function(a, b) --  Rune, Time
-      local arune = a.type or 100
-      local brune = b.type or 100
+      local arune = a.type or a.sortValue
+      local brune = b.type or b.sortValue
       if arune == brune then
 	 if db.reverseSort then
 	    return a.value > b.value
@@ -231,8 +250,8 @@ mod.sortFunctions = {
    end, 
 
    function(a, b) --  Rune, Reverse Time
-      local arune = a.type or 100
-      local brune = b.type or 100
+      local arune = a.type or a.sortValue
+      local brune = b.type or b.sortValue
       if arune == brune then
 	 if db.reverseSort then
 	    return a.value < b.value
@@ -248,9 +267,9 @@ mod.sortFunctions = {
    function(a, b) -- Time, Rune
       if a.value == b.value then
 	 if db.reverseSort then
-	    return (a.type or 100) > (b.type or 100)
+	    return (a.type or a.sortValue) > (b.type or b.sortValue)
 	 else
-	    return (a.type or 100) < (b.type or 100)
+	    return (a.type or a.sortValue) < (b.type or b.sortValue)
 	 end
       elseif db.reverseSort then
 	 return a.value > b.value
@@ -260,9 +279,9 @@ mod.sortFunctions = {
    function(a, b) -- Reverse Time, Rune
       if a.value == b.value then
 	 if db.reverseSort then
-	    return (a.type or 100) >  (b.type or 100)
+	    return (a.type or a.sortValue) >  (b.type or b.sortValue)
 	 else
-	    return (a.type or 100) < (b.type or 100)
+	    return (a.type or a.sortValue) < (b.type or b.sortValue)
 	 end
       elseif db.reverseSort then
 	 return a.value < b.value
@@ -281,7 +300,11 @@ function mod:OnEnable()
       mod.runebars = runebars
       mod.bars = bars
       mod:UpdateLocalVariables()
+
+      hiddenBars = mod:NewBarGroup("Hidden Bars", nil, 200, 20)
+      hiddenBars:Hide()
    end
+
 
    mod:ApplyProfile()
    if self.SetLogLevel then
@@ -296,6 +319,8 @@ function mod:OnEnable()
    mod:RegisterEvent("PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_DEAD", "PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_ALIVE", "PLAYER_REGEN_ENABLED")
+   mod:RegisterEvent("UNIT_AURA", "UpdateBuffStatus")
+   mod:RegisterEvent("PLAYER_TARGET_CHANGED", "UpdateBuffStatus")
 end
 
 -- We mess around with bars so restore them to a prestine state
@@ -313,7 +338,7 @@ function mod:ReleaseBar(bar)
    bar:SetValue(0)
    bar:SetScale(1)
    bar.spark:SetAlpha(1)
-   bars:RemoveBar(bar.name)
+   bar.ownerGroup:RemoveBar(bar.name)
 end
 
 function mod:CreateBars()
@@ -341,7 +366,9 @@ function mod:CreateBars()
 	 end
 	 bar.overlayTexture:SetAlpha(0)
 	 bar.barId  = id
-	 bar:SetFrameLevel(100+id) -- this is here to ensure a "consistent" order of the icons in case they are sorted somehow
+	 bar.sortValue = data.sortValue or id
+ 	 bar:SetFrameLevel(100+id) -- this is here to ensure a "consistent" order of the icons in case they are sorted somehow
+
 	 runebars[id] = bar
 	 
 	 if data.type == mod.RUNE_BAR then
@@ -355,6 +382,11 @@ function mod:CreateBars()
 	    mod:SetBarLabel(id, data)
 	    mod:SetBarColor(bar, db.colors.Runic)
 	    bar.icon:SetTexture(media:Fetch("statusbar", "Empty")) -- ugh
+	 elseif data.type == mod.DOT_BAR then
+--	    mod:UpdateRunicPower()
+	    mod:SetBarLabel(id, data)
+	    mod:SetBarColor(bar, db.colors[data.spell])
+	    bar.icon:SetTexture(mod.spellCache[data.spell].icon)
 	 end
 	 if not db.showIcon  then bar:HideIcon() end
 	 if not db.showLabel then bar:HideLabel() end
@@ -373,15 +405,25 @@ function mod:OnDisable()
    mod:UnregisterEvent("PLAYER_UNGHOST")
    mod:UnregisterEvent("PLAYER_DEAD")
    mod:UnregisterEvent("PLAYER_ALIVE")
+   mod:UnregisterEvent("PLAYER_TARGET_CHANGED")
+   mod:UnregisterEvent("UNIT_AURA")
 end
 
 do
    local numActiveRunes = 0
    local activeRunes = {}
-   
+   local haveRuneBar, haveRunicBar, haveDotBar
    local runeData = { {}, {}, {}, {}, {}, {} }
-   local now, updated, data, bar, playAlert, tmp, newValue
+   local now, updated, data, bar, playAlert, tmp, newValue, numActiveDots, scriptActive
    local readyFlash = {}
+   local targetSpellInfo = {
+      BLOODPLAGUE = {},
+      FROSTFEVER = {},
+   }
+   local playerBuffInfo = {
+      UNHOLYBLIGHT = {}
+   }
+
    
    function mod:UpdateRemainingTimes()
       if db.flashTimes and db.flashMode == 2 then
@@ -389,7 +431,7 @@ do
       end
       for id,barData in ipairs(db.bars) do
 	 bar = runebars[id]
-	 if barData.type == mod.RUNE_BAR then
+	 if barData.type ~= mod.RUNIC_BAR then
 	    data = runeData[barData.runeid]
 	    if data.remaining <= 0 then
 	       if db.showRemaining then
@@ -408,11 +450,32 @@ do
       end
    end
 
-   function mod.UpdateBars()
-      now = GetTime()
-      playAlert = nil
+   local function UpdateBuffDurations(spellInfo)
+      for id, data in pairs(spellInfo) do
+	 if data.expirationTime ~= nil then
+	    if not data.ready then 
+	       data.remaining = data.expirationTime - now
+	       data.value     = data.duration - data.remaining
+	       if data.remaining > 0 then
+		  numActiveDots = numActiveDots + 1
+	       end
+	    end
+	 else
+	    -- just set defaults
+	    data.remaining = 0
+	    data.duration = 0
+	    data.expirationTime = 0
+	    data.ready = 0
+	 end
+      end
+   end
 
+   function mod.UpdateBars()
+      numActiveDots = 0
+      now = GetTime()
+      playAlert, haveRuneBar, haveRunicBar, haveDotBar = nil, nil, nil, nil
       local currentRunicPower = UnitPower("player")
+      local resort
       -- Update the value and remaining time for all runes
       for id = 1,6 do
 	 data = runeData[id]
@@ -420,13 +483,17 @@ do
 	 data.value = (data.duration or 10) - (data.remaining or 0)
       end
 
-      -- Do the "rune is ready" flashing
+      -- this updates the remaining and current value of the dots/buffs
+      UpdateBuffDurations(targetSpellInfo)
+      UpdateBuffDurations(playerBuffInfo)
+
+      -- Do the "rune is ready" flashing      
       if db.readyFlash and #readyFlash > 0 then
 	 for id,data in pairs(readyFlash) do
 	    if data then
 	       local duration = now - data.start
 	       bar = data.bar
-	       if not runeData[db.bars[bar.barId].runeid].ready or duration > db.readyFlashDuration then
+	       if duration > db.readyFlashDuration then
 		  readyFlash[id] = nil
 		  bar.overlayTexture:SetAlpha(0)
 	       elseif duration >= mod._readyFlash2 then
@@ -435,9 +502,6 @@ do
 		  bar.overlayTexture:SetAlpha(duration/mod._readyFlash2)
 	       end
 	    end
-	 end
-	 if #readyFlash == 0 and numActiveRunes == 0 then
-	    bars:SetScript("OnUpdate", nil)
 	 end
       end
       
@@ -458,19 +522,36 @@ do
 	       else
 		  bar:SetAlpha(1.0)
 	       end
-	    elseif barData.type == mod.RUNE_BAR then
-	       data = runeData[barData.runeid]
-	       -- Handle death runes changes
-	       if bar.type ~= data.type then
-		  local name, icon, type, color = mod:GetRuneInfo(barData.runeid)
-		  bar.type = data.type
-		  bar:SetLabel(name) 
-		  bar:SetIcon(icon) 
-		  mod:SetBarColor(bar, color)
+	       haveRunicBar = true
+	    elseif barData.type == mod.DOT_BAR or barData.type == mod.RUNE_BAR then
+	       local isRuneBar
+	       if barData.type == mod.DOT_BAR then
+		  data = targetSpellInfo[barData.spell] or playerBuffInfo[barData.spell]
+		  haveDotBar = true
+	       else
+		  haveRuneBar = true
+		  isRuneBar = true
+		  data = runeData[barData.runeid]
+		  -- Handle death runes changes
+		  if bar.type ~= data.type then
+		     local name, icon, type, color = mod:GetRuneInfo(barData.runeid)
+		     bar.type = data.type
+		     bar:SetLabel(name) 
+		     bar:SetIcon(icon) 
+		     mod:SetBarColor(bar, color)
+		  end
 	       end
 	       
 	       if data.ready or data.remaining <= 0 then
-		  bar:SetAlpha(idleAlphaLevel)
+		  if barData.type == mod.DOT_BAR then
+		     -- Hide inactive dot bars
+		     if bar.ownerGroup ~= hiddenBars then
+			resort = true
+			bars:MoveBarToGroup(bar, hiddenBars)
+		     end
+		  end
+
+		  if isRuneBar then bar:SetAlpha(idleAlphaLevel) end
 		  if bar.notReady or numActiveRunes == 0 then
 		     if db.showRemaining then
 			bar:SetValue(0)
@@ -481,11 +562,16 @@ do
 		     bar.notReady = nil
 		     if bar.flashing then bar:StopFlash() end
 		     if bar.gcdnotify then
-			if db.readyFlash then
-			   tmp = #readyFlash
-			   readyFlash[tmp+1] = { start = now, bar = bar }
-			   if tmp == 0 and numActiveRunes == 0 then
-			      bars:SetScript("OnUpdate", mod.UpdateBars)
+			if db.readyFlash and barData.type == mod.RUNE_BAR then
+			   local inserted
+			   for id,data in pairs(readyFlash) do
+			      if data and data.bar == bar then
+				 data.start = now
+				 inserted = true
+			      end
+			   end
+			   if not inserted then
+			      readyFlash[#readyFlash+1] = { start = now, bar = bar }
 			   end
 			end
 			if db.soundOccasion == 3 then
@@ -495,14 +581,21 @@ do
 		     bar.gcdnotify = nil
 		  end
 	       else
+		  if barData.type == mod.DOT_BAR then
+		     -- Show newly active dot bar
+		     if bar.ownerGroup ~= bars then
+			hiddenBars:MoveBarToGroup(bar, bars)
+			resort = true
+		     end
+		  end
 		  newValue = db.showRemaining and data.remaining or data.value
 		  if bar.value ~= newValue then
 		     if data.remaining < gcd then
-			if not bar.gcdnotify then 
-			   if flashTimer and not bar.flashing then
+			if not bar.gcdnotify then
+			   if mod.flashTimer and not bar.flashing then
 			      bar:SetAlpha(1.0)
-			      bar:Flash(data.remaining/flashTimer)
-			   else
+			      bar:Flash(data.remaining/mod.flashTimer)
+			   elseif isRuneBar then
 			      bar:SetAlpha(db.alphaGCD)
 			   end
 			   bar.gcdnotify = true
@@ -511,9 +604,9 @@ do
 			   end
 			elseif db.fadeAlphaGCD and not bar.flashing then
 			   tmp = data.remaining/gcd
-			   bar:SetAlpha(db.alphaGCD*tmp + idleAlphaLevel*(1-tmp))			
+			   if isRuneBar then bar:SetAlpha(db.alphaGCD*tmp + idleAlphaLevel*(1-tmp)) end
 			end
-		     else
+		     elseif isRuneBar then
 			if db.fadeAlpha then
 			   tmp = (data.remaining-gcd)/(10-gcd)
 			   bar:SetAlpha(db.alphaActive*tmp + db.alphaGCD*(1-tmp))
@@ -521,7 +614,7 @@ do
 			   bar:SetAlpha(db.alphaActive)
 			end
 		     end
-		     bar:SetValue(newValue)
+		     bar:SetValue(newValue, data.duration)
 		     if db.showTimer then
 			if data.remaining == 0 then
 			   bar.timerLabel:SetText("")
@@ -537,14 +630,78 @@ do
 	    end
 	 end
       end
-      if db.sortMethod > 1 then 
+      if db.sortMethod > 1 or resort then 
+	 mod:SetSize()
+	 mod:SetOrientation()
 	 bars:SortBars()	
+      end
+      if resort then
+	 hiddenBars:SortBars()
       end
       if playAlert and mod.soundFile then
 	 PlaySoundFile(mod.soundFile)
       end
+      if #readyFlash > 0                              -- animations
+	 or (haveRuneBar and numActiveRunes > 0)      -- runes are active
+	 or (haveDotBar and numActiveDots > 0)        -- dot display active
+	 or (haveRunicBar and currentRunicPower > 0)  -- non-zero runic power
+      then
+	 if not scriptActive then
+	    -- something is going on, and timer isn't active so enable it
+	    bars:SetScript("OnUpdate", mod.UpdateBars)
+	    scriptActive = true
+--	    mod:Print("Enabling auto-update.")
+	 end
+      elseif scriptActive then
+	 -- We're active, but have nothing to do - disable OnUpdate
+--	 mod:Print("Disabling auto-update")
+	 bars:SetScript("OnUpdate", nil)
+	 scriptActive = nil
+      end
    end
-   
+
+   function mod:UpdateBuffStatus(event, unit)
+      local spellInfo, filter
+      if event == "PLAYER_TARGET_CHANGED" then
+	 unit = "target"
+      end
+      if unit == "target" then
+	 spellInfo = targetSpellInfo
+	 filter = "HARMFUL"
+      elseif unit == "player" then
+	 spellInfo = playerBuffInfo
+	 filter = "HELPFUL"
+      else
+	 return
+      end
+      for id, data in pairs(spellInfo) do
+	 data.ready = true
+	 data.duration  = 0
+	 data.expirationTime = 0
+      end
+      
+      if UnitExists(unit) then -- don't update if the unit doesn't exist
+	 local info
+	 for id = 1,40 do
+	    local name, _, _, _,_,  duration, expirationTime, isMine = UnitAura(unit, id, filter)
+	    if name and isMine then
+	       info = mod.spellCache[name]
+	       if info then
+		  data = spellInfo[info.shortname]
+		  if data then -- required since unholy blight shows up on the target too
+		     data.expirationTime = expirationTime
+		     data.duration  = duration
+		     data.ready     = false
+		  end
+	       end
+	    end
+	 end
+      end
+      if not scriptActive then
+	 mod.UpdateBars()
+      end
+   end
+
    function mod:UpdateRuneStatus(id)
       local data = runeData[id]
       data.start, data.duration, data.ready = GetRuneCooldown(id)
@@ -562,33 +719,31 @@ do
 	    activeRunes[rune] = nil
 	    numActiveRunes = numActiveRunes - 1
 	 end
-	 if numActiveRunes == 0 and #readyFlash == 0 then
-	    if UnitPower("player") == 0 then
-	       bars:SetScript("OnUpdate", nil)
-	       mod.UpdateBars()
-	    end
-	 end
       else
 	 if not activeRunes[rune] then
 	    numActiveRunes = numActiveRunes + 1
 	    activeRunes[rune] = true
 	 end
-	 if numActiveRunes == 1 then
-	    bars:SetScript("OnUpdate", mod.UpdateBars)
-	 end
+      end      
+      if not scriptActive then
+	 mod:UpdateBars()
       end
    end
    
    function mod:RUNE_TYPE_UPDATE(_, rune)
       runeData[rune].type = GetRuneType(rune)
-      mod:UpdateBars()
+      if not scriptActive then
+	 mod:UpdateBars()
+      end
    end
 
    function mod:RefreshRuneTypes()
       for rune = 1,6 do
 	 runeData[rune].type = GetRuneType(rune)
       end
-      mod:UpdateBars()
+      if not scriptActive then
+	 mod:UpdateBars()
+      end
    end
    
    function mod:UpdateRunicPower(event,unit)
@@ -606,14 +761,9 @@ do
 	    end
 	 end
       end
-      if numActiveRunes == 0 and #readyFlash == 0 then
-	 if current == 0 then
-	    bars:SetScript("OnUpdate", nil)
-	    mod.UpdateBars()
-	 else 
-	    bars:SetScript("OnUpdate", mod.UpdateBars)
-	 end
-      end      
+      if not scriptActive then
+	 mod:UpdateBars()
+      end
    end
 end
 
@@ -809,4 +959,9 @@ function mod:__ReverseGrowth(reverse)
 		end
 	end
 	self:SortBars()
+end
+
+function mod:SortAllBars()
+   hiddenBars:SortBars()
+   bars:SortBars()
 end
