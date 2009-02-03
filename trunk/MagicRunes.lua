@@ -2,20 +2,20 @@
 **********************************************************************
 MagicRunes - Death Knight rune cooldown displaye
 **********************************************************************
-This file is part of MagicBars, a World of Warcraft Addon
+This file is part of Magic Runes, a World of Warcraft Addon
 
-MagicBars is free software: you can redistribute it and/or modify
+Magic Runes is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-MagicBars is distributed in the hope that it will be useful, but
+Magic Runes is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with MagicBars.  If not, see <http://www.gnu.org/licenses/>.
+along with Magic Runes.  If not, see <http://www.gnu.org/licenses/>.
 
 **********************************************************************
 ]]
@@ -28,7 +28,7 @@ if not LibStub:GetLibrary("LibBars-1.0", true) then
    LoadAddOn("LibBars-1.0") -- hrm..
 end
 
-MagicRunes = LibStub("AceAddon-3.0"):NewAddon("MagicBars", "AceEvent-3.0", "LibBars-1.0", 
+MagicRunes = LibStub("AceAddon-3.0"):NewAddon("Magic Runes", "AceEvent-3.0", "LibBars-1.0", 
 					      "AceTimer-3.0", "AceConsole-3.0")
 local mod = MagicRunes
 
@@ -45,6 +45,8 @@ local Logger = LibStub("LibLogger-1.0", true)
 local C = LibStub("AceConfigDialog-3.0")
 local media = LibStub("LibSharedMedia-3.0")
 
+local UnitExists = UnitExists
+local UnitAura = UnitAura
 local UnitPower = UnitPower
 local UnitPowerMax = UnitPowerMax
 local GetRuneCooldown = GetRuneCooldown
@@ -54,6 +56,7 @@ local InCombatLockdown = InCombatLockdown
 local PlaySoundFile = PlaySoundFile
 local fmt = string.format
 local max = max
+local cos = math.cos
 local min = min
 local pairs = pairs
 local ipairs = ipairs
@@ -62,7 +65,7 @@ local sort = sort
 local tostring = tostring
 local type = type
 local unpack = unpack
-local PI = math.pi
+local TWOPI = math.pi * 2
 local ceil = math.ceil
 
 local gcd = 1.5
@@ -70,9 +73,11 @@ local playerInCombat = InCombatLockdown()
 local idleAlphaLevel
 local addonEnabled = false
 local db, isInGroup
-bars, hiddenBars = nil, nil
+local bars, hiddenBars = nil, nil
 local runebars = {}
-
+local plugins = {}
+mod.plugins = plugins
+   
 if Logger then
    Logger:Embed(mod)
 else
@@ -228,9 +233,9 @@ end
 mod.sortFunctions = {   
    function(a, b) -- BarId
       if db.reverseSort then
-	 return a.sortValue > b.sortValue
+	 return (a.sortValue or 100) > (b.sortValue or 100)
       else
-	 return a.sortValue < b.sortValue
+	 return (a.sortValue or 100) < (b.sortValue or 100)
       end
    end,
    function(a, b) --  Rune, Time
@@ -305,6 +310,13 @@ function mod:OnEnable()
       hiddenBars:Hide()
    end
 
+   for name, plugin in pairs(mod.plugins) do
+      if plugin.OnEnable then
+	 plugin:OnEnable()
+      end
+   end
+   
+   mod.isSetup = true
 
    mod:ApplyProfile()
    if self.SetLogLevel then
@@ -321,6 +333,7 @@ function mod:OnEnable()
    mod:RegisterEvent("PLAYER_ALIVE", "PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("UNIT_AURA", "UpdateBuffStatus")
    mod:RegisterEvent("PLAYER_TARGET_CHANGED", "UpdateBuffStatus")
+
 end
 
 -- We mess around with bars so restore them to a prestine state
@@ -412,9 +425,11 @@ end
 do
    local numActiveRunes = 0
    local activeRunes = {}
-   local haveRuneBar, haveRunicBar, haveDotBar
+   local now, updated, data, bar, playAlert, tmp, newValue
+   local numActiveDots, scriptActive, resort, currentRunicPower
+
    local runeData = { {}, {}, {}, {}, {}, {} }
-   local now, updated, data, bar, playAlert, tmp, newValue, numActiveDots, scriptActive
+   local runeAlphaLevels = { 1, 1, 1, 1, 1, 1 }
    local readyFlash = {}
    local targetSpellInfo = {
       BLOODPLAGUE = {},
@@ -458,7 +473,18 @@ do
 	       data.value     = data.duration - data.remaining
 	       if data.remaining > 0 then
 		  numActiveDots = numActiveDots + 1
+		  if data.remaining < gcd and not data.notified then
+		     if db.soundOccasion == 2 then
+			playAlert = true
+		     end
+		     data.notified = db.soundOccasion
+		  end
 	       end
+	    else
+	       if data.notified == 3 then
+		  playAlert = true
+	       end		    
+	       data.notified = nil
 	    end
 	 else
 	    -- just set defaults
@@ -470,42 +496,78 @@ do
       end
    end
 
-   function mod.UpdateBars()
-      numActiveDots = 0
-      now = GetTime()
-      playAlert, haveRuneBar, haveRunicBar, haveDotBar = nil, nil, nil, nil
-      local currentRunicPower = UnitPower("player")
-      local resort
-      -- Update the value and remaining time for all runes
+   local function UpdateRuneDetails(t)
       for id = 1,6 do
 	 data = runeData[id]
 	 data.remaining = max((data.start or 0) + (data.duration or 0) - now, 0)
 	 data.value = (data.duration or 10) - (data.remaining or 0)
-      end
-
-      -- this updates the remaining and current value of the dots/buffs
-      UpdateBuffDurations(targetSpellInfo)
-      UpdateBuffDurations(playerBuffInfo)
-
-      -- Do the "rune is ready" flashing      
-      if db.readyFlash and #readyFlash > 0 then
-	 for id,data in pairs(readyFlash) do
-	    if data then
-	       local duration = now - data.start
-	       bar = data.bar
-	       if duration > db.readyFlashDuration then
-		  readyFlash[id] = nil
-		  bar.overlayTexture:SetAlpha(0)
-	       elseif duration >= mod._readyFlash2 then
-		  bar.overlayTexture:SetAlpha((db.readyFlashDuration - duration)/mod._readyFlash2)
-	       else
-		  bar.overlayTexture:SetAlpha(duration/mod._readyFlash2)
+	 if data.ready or data.remaining <= 0 then
+	    data.alpha = idleAlphaLevel
+	    if data.flashing then
+	       data.flashTime = nil
+	       data.flashPeriod = nil
+	       data.flashing = nil
+	    end
+	    if data.notified == 3 then
+	       playAlert = true
+	    end		    
+	    data.notified = nil
+	 elseif data.remaining < gcd then
+	    if not data.notified then
+	       if db.soundOccasion == 2 then
+		  playAlert = true
 	       end
+	       data.notified = db.soundOccasion
+	    end		    
+
+	    if mod.flashTimer then
+	       if not data.flashing then
+		  data.alpha = 1.0
+		  data.flashTime = 0
+		  data.flashPeriod = data.remaining/mod.flashTimer
+		  data.flashing = true
+	       else
+		  if t then data.flashTime = data.flashTime + t end
+		  if data.flashTime > TWOPI then
+		     data.flashTime = data.flashTime - TWOPI
+		  end
+		  data.alpha = (cos(data.flashTime / data.flashPeriod) + 1) / 2
+	       end		  
+	    else
+	       if db.fadeAlphaGCD then
+		  tmp = data.remaining/gcd
+		  data.alpha = db.alphaGCD*tmp + idleAlphaLevel*(1-tmp)
+	       else
+		  data.alpha = db.alphaGCD
+	       end
+	    end
+	 elseif db.fadeAlpha then
+	    tmp = (data.remaining-gcd)/(10-gcd)
+	    data.alpha = db.alphaActive*tmp + db.alphaGCD*(1-tmp)
+	 else
+	    data.alpha = db.alphaActive
+	 end
+      end	 
+   end
+
+   local function DoReadyFlash()
+      for id,data in pairs(readyFlash) do
+	 if data then
+	    local duration = now - data.start
+	    bar = data.bar
+	    if duration > db.readyFlashDuration then
+	       readyFlash[id] = nil
+	       bar.overlayTexture:SetAlpha(0)
+	    elseif duration >= mod._readyFlash2 then
+	       bar.overlayTexture:SetAlpha((db.readyFlashDuration - duration)/mod._readyFlash2)
+	    else
+	       bar.overlayTexture:SetAlpha(duration/mod._readyFlash2)
 	    end
 	 end
       end
-      
-      
+   end
+
+   local function UpdateBarDisplay()
       -- Check each bar for update
       for id,barData in ipairs(db.bars) do
 	 bar = runebars[id]
@@ -522,14 +584,11 @@ do
 	       else
 		  bar:SetAlpha(1.0)
 	       end
-	       haveRunicBar = true
 	    elseif barData.type == mod.DOT_BAR or barData.type == mod.RUNE_BAR then
 	       local isRuneBar
 	       if barData.type == mod.DOT_BAR then
 		  data = targetSpellInfo[barData.spell] or playerBuffInfo[barData.spell]
-		  haveDotBar = true
 	       else
-		  haveRuneBar = true
 		  isRuneBar = true
 		  data = runeData[barData.runeid]
 		  -- Handle death runes changes
@@ -542,6 +601,10 @@ do
 		  end
 	       end
 	       
+	       if data.flashing or isRuneBar then
+		  bar:SetAlpha(data.alpha)
+	       end
+	       
 	       if data.ready or data.remaining <= 0 then
 		  if barData.type == mod.DOT_BAR then
 		     -- Hide inactive dot bars
@@ -551,7 +614,6 @@ do
 		     end
 		  end
 
-		  if isRuneBar then bar:SetAlpha(idleAlphaLevel) end
 		  if bar.notReady or numActiveRunes == 0 then
 		     if db.showRemaining then
 			bar:SetValue(0)
@@ -560,7 +622,6 @@ do
 		     end
 		     bar.timerLabel:SetText("")
 		     bar.notReady = nil
-		     if bar.flashing then bar:StopFlash() end
 		     if bar.gcdnotify then
 			if db.readyFlash and barData.type == mod.RUNE_BAR then
 			   local inserted
@@ -574,9 +635,6 @@ do
 			      readyFlash[#readyFlash+1] = { start = now, bar = bar }
 			   end
 			end
-			if db.soundOccasion == 3 then
-			   playAlert = true
-			end		     
 		     end
 		     bar.gcdnotify = nil
 		  end
@@ -591,28 +649,7 @@ do
 		  newValue = db.showRemaining and data.remaining or data.value
 		  if bar.value ~= newValue then
 		     if data.remaining < gcd then
-			if not bar.gcdnotify then
-			   if mod.flashTimer and not bar.flashing then
-			      bar:SetAlpha(1.0)
-			      bar:Flash(data.remaining/mod.flashTimer)
-			   elseif isRuneBar then
-			      bar:SetAlpha(db.alphaGCD)
-			   end
-			   bar.gcdnotify = true
-			   if db.soundOccasion == 2 then
-			      playAlert = true
-			   end
-			elseif db.fadeAlphaGCD and not bar.flashing then
-			   tmp = data.remaining/gcd
-			   if isRuneBar then bar:SetAlpha(db.alphaGCD*tmp + idleAlphaLevel*(1-tmp)) end
-			end
-		     elseif isRuneBar then
-			if db.fadeAlpha then
-			   tmp = (data.remaining-gcd)/(10-gcd)
-			   bar:SetAlpha(db.alphaActive*tmp + db.alphaGCD*(1-tmp))
-			else
-			   bar:SetAlpha(db.alphaActive)
-			end
+			bar.gcdnotify = true
 		     end
 		     bar:SetValue(newValue, data.duration)
 		     if db.showTimer then
@@ -630,31 +667,61 @@ do
 	    end
 	 end
       end
-      if db.sortMethod > 1 or resort then 
-	 mod:SetSize()
+   end
+   
+   function mod.UpdateBars(self, t)
+      currentRunicPower = UnitPower("player")
+      resort, playAlert = nil, nil
+      numActiveDots = 0
+      now = GetTime()
+
+      -- Update the value and remaining time for all runes
+      UpdateRuneDetails(t)
+      
+      -- this updates the remaining and current value of the dots/buffs
+      UpdateBuffDurations(targetSpellInfo)
+      UpdateBuffDurations(playerBuffInfo)
+
+      -- Do the "rune is ready" flashing      
+      if db.readyFlash and #readyFlash > 0 then
+	 DoReadyFlash()
+      end
+
+      UpdateBarDisplay()
+
+      if resort then
 	 mod:SetOrientation()
+	 mod:SetSize()
+	 hiddenBars:SortBars()
+      elseif db.sortMethod > 1 then
 	 bars:SortBars()	
       end
-      if resort then
-	 hiddenBars:SortBars()
-      end
+
       if playAlert and mod.soundFile then
 	 PlaySoundFile(mod.soundFile)
       end
+
+      -- Execute the update method in each plugin
+      for name, plugin in pairs(mod.plugins) do
+	 if plugin.OnUpdate then
+	    plugin:OnUpdate(runeData, targetSpellInfo, playerBuffInfo)
+	 end
+      end
+
+
+      -- Check whether or not to cancel the OnUpdate method
       if #readyFlash > 0                              -- animations
-	 or (haveRuneBar and numActiveRunes > 0)      -- runes are active
-	 or (haveDotBar and numActiveDots > 0)        -- dot display active
-	 or (haveRunicBar and currentRunicPower > 0)  -- non-zero runic power
+	 or numActiveRunes > 0      -- runes are active
+	 or numActiveDots > 0       -- dot display active
+	 or currentRunicPower > 0   -- non-zero runic power
       then
+	 -- something is going on, and timer isn't active so enable it
 	 if not scriptActive then
-	    -- something is going on, and timer isn't active so enable it
 	    bars:SetScript("OnUpdate", mod.UpdateBars)
 	    scriptActive = true
---	    mod:Print("Enabling auto-update.")
 	 end
       elseif scriptActive then
 	 -- We're active, but have nothing to do - disable OnUpdate
---	 mod:Print("Disabling auto-update")
 	 bars:SetScript("OnUpdate", nil)
 	 scriptActive = nil
       end
@@ -855,6 +922,12 @@ function mod:ApplyProfile()
    for id = 1,6 do mod:UpdateRuneStatus(id) end
    mod.UpdateBars()
    bars:SortBars()
+
+   for id,plugin in pairs(mod.plugins) do
+      if plugin.ApplyProfile then
+	 plugin:ApplyProfile()
+      end
+   end
 end
 
 function mod:OnProfileChanged(event, newdb)
@@ -888,6 +961,11 @@ function mod:ToggleLocked(locked)
       end
    end
    bars:SortBars()
+   for id,plugin in pairs(mod.plugins) do
+      if plugin.ToggleLocked then
+	 plugin:ToggleLocked(db.locked)
+      end
+   end
 end
 
 function mod:GetGlobalOption(info)
@@ -939,29 +1017,39 @@ end
 
 -- Override for the LibBars method. This makes it so the button doesn't move the bars when hidden or shown.
 function mod:__ReverseGrowth(reverse)
-	self.growup = reverse
-	self.button:ClearAllPoints()
-	if self.orientation % 2 == 0 then
-		if reverse then
-			self.button:SetPoint("TOPLEFT", self, "TOPRIGHT")
-			self.button:SetPoint("BOTTOMLEFT", self, "BOTTOMRIGHT")
-		else
-			self.button:SetPoint("TOPRIGHT", self, "TOPLEFT")
-			self.button:SetPoint("BOTTOMRIGHT", self, "BOTTOMLEFT")
-		end
-	else
-		if reverse then
-			self.button:SetPoint("TOPLEFT", self, "BOTTOMLEFT")
-			self.button:SetPoint("TOPRIGHT", self, "BOTTOMRIGHT")
-		else
-			self.button:SetPoint("BOTTOMLEFT", self, "TOPLEFT")
-			self.button:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT")
-		end
-	end
-	self:SortBars()
+   self.growup = reverse
+   self.button:ClearAllPoints()
+   if self.orientation % 2 == 0 then
+      if reverse then
+	 self.button:SetPoint("TOPLEFT", self, "TOPRIGHT")
+	 self.button:SetPoint("BOTTOMLEFT", self, "BOTTOMRIGHT")
+      else
+	 self.button:SetPoint("TOPRIGHT", self, "TOPLEFT")
+	 self.button:SetPoint("BOTTOMRIGHT", self, "BOTTOMLEFT")
+      end
+   else
+      if reverse then
+	 self.button:SetPoint("TOPLEFT", self, "BOTTOMLEFT")
+	 self.button:SetPoint("TOPRIGHT", self, "BOTTOMRIGHT")
+      else
+	 self.button:SetPoint("BOTTOMLEFT", self, "TOPLEFT")
+	 self.button:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT")
+      end
+   end
+   self:SortBars()
 end
 
 function mod:SortAllBars()
    hiddenBars:SortBars()
    bars:SortBars()
+end
+
+-- crude method to register a new plugin. It will enable it if Magic Runes is already enabled
+-- i.e if it's loaded on demand or similar
+function mod:RegisterPlugin(name, plugin)
+   mod.plugins[name] = plugin
+   if mod.isSetup and plugin.OnEnable then
+      -- Already enabled so do the setup now
+      plugin:OnEnable()
+   end
 end

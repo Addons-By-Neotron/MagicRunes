@@ -18,7 +18,9 @@ local filePrefix = "../"
 local files = {
    "RuneConfig.lua",
    "MagicRunes.lua",
-   "Presets.lua"
+   "Presets.lua",
+   "IconDisplay/IconDisplay.lua"
+   
 }
 
 --[[

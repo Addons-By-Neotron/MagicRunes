@@ -3,6 +3,7 @@ if not MagicRunes then return end -- not a DK
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicRunes", false)
 
 -- upvalues
+local PI = math.pi
 local ipairs = ipairs
 local pairs = pairs
 local tonumber = tonumber
