@@ -94,24 +94,16 @@ end
 local options
 
 local runeInfo = {
-   { L["Blood"],  "B", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood"}, 
-   { L["Unholy"], "U", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy"};
-   { L["Frost"],  "F", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost"},
-   { L["Death"],  "D", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" },
+   { "Blood",  "B", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood"}, 
+   { "Unholy", "U", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy"};
+   { "Frost",  "F", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost"},
+   { "Death",  "D", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" },
 }
 
 mod.spellCache = {}
 
-do
-   local comboIcons = {
-      runeInfo[1][3], -- BLOOD
-      runeInfo[2][3], -- UNHOLY
-      runeInfo[3][3], -- FROST
-      runeInfo[4][3], -- FUB (death)
-   }
-   function mod:GetRuneIcon(icon)
-      return comboIcons[icon]
-   end
+function mod:GetRuneIcon(icon)
+   return runeInfo[icon] and runeInfo[icon][3]
 end
 
 local defaults = {
@@ -167,7 +159,7 @@ function mod:GetRuneInfo(runeid)
    if mod._vertical then 
       return info[2], info[3], type, db.colors[info[1]]
    else
-      return info[1], info[3], type, db.colors[info[1]]
+      return L[info[1]], info[3], type, db.colors[info[1]]
    end
 end
 
