@@ -37,18 +37,17 @@ local ipairs = ipairs
 local ceil = math.ceil
 local unpack = unpack
 
-
 local mod = MagicRunes
 local plugin = {}
 local icons = {}
 local lbfGroup
 local iconFrame 
 local iconFrameSize
--- Also includes defaults
 local db
 
 -- Also includes defaults
 local defaults = {
+   runeSet = "Blizzard Improved", 
    vertSpacing = 1,
    horizSpacing = 1,
    scale = 1.0,
@@ -70,26 +69,33 @@ local layoutModes = {
 }
 
 local runeOrder = {
-   { 1, 2, 3, 4, 5, 6},
-   { 1, 3, 5, 2, 4, 6}
+   { 1, 2, 3, 4, 5, 6}, -- BBUUFF
+   { 1, 3, 5, 2, 4, 6}, -- BUFBUF
+   { 1, 2, 5, 6, 3, 4}, -- BBFFUU
+   { 1, 2, 5, 3, 6, 4}, -- BBFUFU
+   { 5, 3, 6, 4, 1, 2}, -- FUFUBB
 }
 
--- Called every on update cycle 
-function plugin:OnUpdate(runeData)
+-- Called every on update cycle
+local nextUpdateDelay = 0
+function plugin:OnUpdate(time, runeData)
    if not db.enabled then return end
-   for id, data in pairs(runeData) do
-      local f = icons[id]
-      f:SetAlpha(data.alpha)
-      if not data.ready and data.start and data.duration then
-	 f.cooldown:SetCooldown(data.start, data.duration)
-      end
+   nextUpdateDelay = nextUpdateDelay - time
+   if time == 0 or nextUpdateDelay <= 0 then
+      nextUpdateDelay = 0.05 
+      for id, data in pairs(runeData) do
+	 local f = icons[id]
+	 f:SetAlpha(data.alpha)
+	 if not data.ready and data.start and data.duration then
+	    f.cooldown:SetCooldown(data.start, data.duration)
+	 end
 	 
-      -- Handle death runes changes
-      if f.type ~= data.type then
-	 local _, icon, type = mod:GetRuneInfo(id)
-	 f.type = data.type
-	 f.icon:SetTexture(icon) 
-      end      
+	 -- Handle death runes changes
+	 if f.type ~= data.type then
+	    f.type = data.type
+	    f.icon:SetTexture(mod:GetRuneIcon(f.type, db.runeSet))
+	 end	 
+      end
    end
 end
 
@@ -133,11 +139,9 @@ function plugin:OnEnable()
       f:EnableMouse(false)
       f.cooldown = _G[fn.."Cooldown"]
       f.icon = _G[fn.."Icon"]
-
       local icon, type = select(2, mod:GetRuneInfo(id))
       f.icon:SetTexture(icon)
       f.type = type
-
       f.runeId = id
       icons[id] = f
       
@@ -145,7 +149,7 @@ function plugin:OnEnable()
 	 -- Button Facade support
 	 lbfGroup:AddButton(f)
       end
-   end   
+   end
    plugin:SetupOptions()
    plugin:ApplyProfile()
 end
@@ -336,9 +340,18 @@ local options = {
 	       name = L["Rune Order"],
 	       values = {
 		  "BBUUFF",
-		  "BUFBUF"
+		  "BUFBUF",
+		  "BBFFUU",
+		  "BBFUFU",
+		  "FUFUBB"
 	       },
 	       order = 30
+	    },
+	    runeSet = {
+	       type = "select",
+	       name = L["Rune Icon Set"],
+	       values = mod:GetRuneSetList(),
+	       order = 35
 	    },
 	    flipx = {
 	       type = "toggle",
@@ -419,8 +432,10 @@ function plugin:SetOption(info, val)
 
    -- Do any actions required due to change in parameters
    if var == "scale" then
+      iconFrame:SetScale(val)
+   elseif var == "runeSet" then
       for id = 1,6 do
-	 iconFrame:SetScale(val)
+	 icons[id].icon:SetTexture(mod:GetRuneIcon(icons[id].type, db.runeSet))
       end
    elseif var == "enabled" then
       if val then iconFrame:Show() else iconFrame:Hide() end

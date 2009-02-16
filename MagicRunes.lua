@@ -94,22 +94,64 @@ end
 local options
 
 local runeInfo = {
-   { "Blood",  "B", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood"}, 
-   { "Unholy", "U", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy"};
-   { "Frost",  "F", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost"},
-   { "Death",  "D", "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" },
+   { "Blood",  "B"}, 
+   { "Unholy", "U"};
+   { "Frost",  "F"},
+   { "Death",  "D" },
+}
+
+local runeSets = {
+   ["Blizzard Improved"] = { 
+      "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardBlood.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardUnholy.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardFrost.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardDeath.tga", 
+   },
+   ["Blizzard"] = { 
+      "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood",
+      "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy";
+      "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost",
+      "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death" 
+   },
+   Japanese = {
+      "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseBlood.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseUnholy.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseFrost.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseDeath.tga", 
+   },
+   ["DKI/Vixen"] = {
+      "Interface\\AddOns\\MagicRunes\\Textures\\VixenBlood.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\VixenUnholy.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\VixenFrost.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\VixenDeath.tga", 
+   },
 }
 
 mod.spellCache = {}
 
-function mod:GetRuneIcon(icon)
-   return runeInfo[icon] and runeInfo[icon][3]
+function mod:GetRuneIcon(icon, set)
+   if not set or not runeSets[set] then set = db.runeSet or "Blizzard" end
+   return runeSets[set][icon]
+end
+
+do
+   local sets
+   function mod:GetRuneSetList()
+      if not sets then
+	 sets = {}
+	 for runeSet in pairs(runeSets) do
+	    sets[runeSet] = runeSet
+	 end
+      end
+      return sets
+   end
 end
 
 local defaults = {
    profile = {
       displayType = mod.RUNE_DISPLAY,
       flashMode = 2,
+      runeSet = "Blizzard",
       hideBlizzardFrame = true,
       flashTimes = 2,
       readyFlash = true,
@@ -156,10 +198,11 @@ function mod:GetRuneInfo(runeid)
    
    local type = GetRuneType(runeid)
    local info = runeInfo[type] or runeInfo[1] -- seems sometimes the rune id is not correct. hmm
+   local icon = mod:GetRuneIcon(type)
    if mod._vertical then 
-      return info[2], info[3], type, db.colors[info[1]]
+      return info[2], icon, type, db.colors[info[1]]
    else
-      return L[info[1]], info[3], type, db.colors[info[1]]
+      return L[info[1]], icon, type, db.colors[info[1]]
    end
 end
 
@@ -386,16 +429,24 @@ function mod:CreateBars()
 	    mod:UpdateRunicPower()
 	    mod:SetBarLabel(id, data)
 	    mod:SetBarColor(bar, db.colors.Runic)
-	    bar.icon:SetTexture(media:Fetch("statusbar", "Empty")) -- ugh
+	    bar:SetIcon(media:Fetch("statusbar", "Empty"))
 	 elseif data.type == mod.DOT_BAR then
 --	    mod:UpdateRunicPower()
 	    mod:SetBarLabel(id, data)
 	    mod:SetBarColor(bar, db.colors[data.spell])
-	    bar.icon:SetTexture(mod.spellCache[data.spell].icon)
+	    bar:SetIcon(mod.spellCache[data.spell].icon)
 	 end
 	 if not db.showIcon  then bar:HideIcon() end
 	 if not db.showLabel then bar:HideLabel() end
 	 if not db.showTimer then bar:HideTimerLabel() end
+      end
+   end
+end
+
+function mod:UpdateBarIcons()
+   for id,data in pairs(db.bars) do
+      if data.type == mod.RUNE_BAR then
+	 runebars[id]:SetIcon(mod:GetRuneIcon(GetRuneType(data.runeid)))
       end
    end
 end
@@ -696,7 +747,7 @@ do
       -- Execute the update method in each plugin
       for name, plugin in pairs(mod.plugins) do
 	 if plugin.OnUpdate then
-	    plugin:OnUpdate(runeData, targetSpellInfo, playerBuffInfo)
+	    plugin:OnUpdate(t or 0, runeData, targetSpellInfo, playerBuffInfo)
 	 end
       end
 

@@ -257,7 +257,14 @@ local options = {
 	    order = 38,
 	    disabled = function() return db.animateIcons end
 	 },
-	 flashMode = {
+	 runeSet = {
+	    type = "select",
+	    name = L["Rune Icon Set"],
+	    values = mod:GetRuneSetList(),
+	    set = function(_,val) db.runeSet = val mod:UpdateBarIcons() end,
+	    order = 39
+	 },
+	 flashMode = {	
 	    type = "select",
 	    name = L["Flash mode"],
 	    desc = L["Type of flashing to use to indicate imminent readiness."],
