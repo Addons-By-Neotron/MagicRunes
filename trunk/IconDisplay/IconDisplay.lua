@@ -139,7 +139,7 @@ function plugin:OnEnable()
       f:EnableMouse(false)
       f.cooldown = _G[fn.."Cooldown"]
       f.icon = _G[fn.."Icon"]
-      local icon, type = select(2, mod:GetRuneInfo(id))
+      local icon, type = select(2, mod:GetRuneInfo(id, db.runeSet))
       f.icon:SetTexture(icon)
       f.type = type
       f.runeId = id
@@ -161,6 +161,9 @@ function plugin:ApplyProfile()
    plugin:LoadPosition()
 
    if db.enabled then iconFrame:Show() else iconFrame:Hide() end
+   for id = 1,6 do
+      icons[id].icon:SetTexture(mod:GetRuneIcon(icons[id].type, db.runeSet))
+   end
 end
 
 function plugin:SavePosition()

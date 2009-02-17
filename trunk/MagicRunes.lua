@@ -191,14 +191,14 @@ local function CacheSpellInfo(name, id)
    mod.spellCache[localizedName] = mod.spellCache[name]
 end
 
-function mod:GetRuneInfo(runeid)
+function mod:GetRuneInfo(runeid, set)
    if not runeid or runeid < 1 or runeid > 6 then
       return
    end
    
    local type = GetRuneType(runeid)
    local info = runeInfo[type] or runeInfo[1] -- seems sometimes the rune id is not correct. hmm
-   local icon = mod:GetRuneIcon(type)
+   local icon = mod:GetRuneIcon(type, set)
    if mod._vertical then 
       return info[2], icon, type, db.colors[info[1]]
    else
