@@ -36,6 +36,9 @@ local UIParent = UIParent
 local ipairs = ipairs
 local ceil = math.ceil
 local unpack = unpack
+local sin = math.sin
+local cos = math.cos
+local degreeToRadian = math.pi / 180
 
 local mod = MagicRunes
 local plugin = {}
@@ -44,6 +47,12 @@ local lbfGroup
 local iconFrame 
 local iconFrameSize
 local db
+
+
+-- Different layout options
+plugin.STYLE_STRAIGHT    = 1
+plugin.STYLE_CIRCLE = 2
+
 
 -- Also includes defaults
 local defaults = {
@@ -54,18 +63,20 @@ local defaults = {
    layout = 1,
    runeOrder = 1,
    width = 6,
-   edgeSize = 5,
+   edgeSize = 16,
+   inset = 4,
    backdropColors = {
       backgroundColor = { 0, 0, 0, 0.5},
       borderColor = { 0.88, 0.88, 0.88, 0.8 },
    },
    background = "Solid",
    border = "None",
-}
-
-local layoutModes = {
-   Horizontal = 1,
-   Vertical = 2,
+   style = plugin.STYLE_STRAIGHT, 
+   -- Ellipsis layout
+   majorRadius = 100,
+   minorRadius = 80,
+   spread = 216,
+   startAngle = 180,
 }
 
 local runeOrder = {
@@ -74,7 +85,11 @@ local runeOrder = {
    { 1, 2, 5, 6, 3, 4}, -- BBFFUU
    { 1, 2, 5, 3, 6, 4}, -- BBFUFU
    { 5, 3, 6, 4, 1, 2}, -- FUFUBB
+   { 1, 5, 3, 4, 6, 2}, -- BFUUFB
+   { 1, 3, 5, 6, 4, 2}, -- BUFFUB
+
 }
+
 
 -- Called every on update cycle
 local nextUpdateDelay = 0
@@ -122,6 +137,7 @@ function plugin:OnEnable()
    iconFrame = CreateFrame("Frame", "MagicRunesIconFrame", UIParent)
    iconFrame:SetScale(db.scale)
    iconFrame:SetMovable(true)
+   iconFrame:SetFrameLevel(0)
    iconFrame:SetScript("OnDragStart",
 		       function(self) self:StartMoving() end)
    iconFrame:SetScript("OnDragStop",
@@ -205,50 +221,79 @@ end
 function plugin:AnchorIcons()
    for id = 1,6 do icons[id]:ClearAllPoints() end
 
-   local anchor, xmulti, ymulti, otheranchor
-   local count = 1
-   
-   local inset = 0
-   if db.border ~= "None" then
-      inset = db.edgeSize / 2
-   end
-
-   if db.flipy then
-      anchor = "BOTTOM"
-      ymulti = 1
-   else
-      anchor = "TOP"
-      ymulti = -1
-   end
-   
-   if db.flipx then
-      anchor = anchor .. "RIGHT"
-      xmulti = -1 
-   else
-      anchor = anchor .. "LEFT"
-      xmulti = 1
-   end
-
-   local hpadding = (iconFrameSize + (db.horizSpacing or 0))
-   local vpadding = (iconFrameSize + (db.vertSpacing or 0))
-
-   local height = inset
-   local xoffset = inset
-
-   for _,id in ipairs(runeOrder[db.runeOrder]) do
-      if count > db.width then
-	 xoffset = inset
-	 count = 1
-	 height = height + vpadding
+   if db.style == plugin.STYLE_STRAIGHT then
+      local anchor, xmulti, ymulti, otheranchor
+      local count = 1
+      
+      local inset = 0
+      if db.border ~= "None" then
+	 inset = db.edgeSize / 2
       end
-
-      icons[id]:SetPoint(anchor, iconFrame, anchor, xmulti*xoffset, ymulti*height)
-
-      count = count + 1
-      xoffset = xoffset + hpadding
+      
+      if db.flipy then
+	 anchor = "BOTTOM"
+	 ymulti = 1
+      else
+	 anchor = "TOP"
+	 ymulti = -1
+      end
+      
+      if db.flipx then
+	 anchor = anchor .. "RIGHT"
+	 xmulti = -1 
+      else
+	 anchor = anchor .. "LEFT"
+	 xmulti = 1
+      end
+      
+      local hpadding = (iconFrameSize + (db.horizSpacing or 0))
+      local vpadding = (iconFrameSize + (db.vertSpacing or 0))
+      
+      local height = inset
+      local xoffset = inset
+      
+      for _,id in ipairs(runeOrder[db.runeOrder]) do
+	 if count > db.width then
+	    xoffset = inset
+	    count = 1
+	    height = height + vpadding
+	 end
+	 
+	 icons[id]:SetPoint(anchor, iconFrame, anchor, xmulti*xoffset, ymulti*height)
+	 
+	 count = count + 1
+	 xoffset = xoffset + hpadding
+      end
+      iconFrame:SetHeight(inset*2 + ceil(6/db.width)*vpadding-db.vertSpacing)
+      iconFrame:SetWidth(inset*2 + db.width*hpadding)
+   elseif db.style == plugin.STYLE_CIRCLE then
+      local iconPositions = {}
+      local angle = db.startAngle* degreeToRadian
+      local step = db.spread / 6 * degreeToRadian
+      local mx = db.majorRadius
+      local my = db.minorRadius
+      local minx, miny, maxx, maxy = 0, 0, 0, 0
+      local inset = icons[1]:GetWidth()/2
+      if db.border ~= "None" then
+	 inset = inset + db.edgeSize/2
+      end
+      
+      for _,id in ipairs(runeOrder[db.runeOrder]) do
+	 local x = mx * cos(angle)
+	 local y = my * sin(angle)
+	 if x < minx then minx = x end
+	 if x > maxx then maxx = x end
+	 if y < miny then miny = y end
+	 if y > maxy then maxy = y end
+	 iconPositions[#iconPositions+1] = { id = id, x = x, y = y } 
+	 angle = angle + step
+      end
+      for _,data in ipairs(iconPositions) do
+	 icons[data.id]:SetPoint("CENTER", iconFrame, "TOPLEFT", inset + data.x - minx, -(inset + data.y - miny))
+      end
+      iconFrame:SetWidth(maxx - minx + inset*2)
+      iconFrame:SetHeight(maxy - miny + inset*2)
    end
-   iconFrame:SetHeight(inset*2 + ceil(6/db.width)*vpadding-db.vertSpacing)
-   iconFrame:SetWidth(inset*2 + db.width*hpadding)
    plugin:FixBackdrop()
 end
 
@@ -266,11 +311,10 @@ function plugin:FixBackdrop()
       edge = db.edgeSize
    end
    bgFrame.edgeSize = edge
-   edge = edge / 4
-   bgFrame.insets.left   = edge
-   bgFrame.insets.right  = edge
-   bgFrame.insets.top    = edge
-   bgFrame.insets.bottom = edge
+   bgFrame.insets.left   = db.inset
+   bgFrame.insets.right  = db.inset
+   bgFrame.insets.top    = db.inset
+   bgFrame.insets.bottom = db.inset
 
 
    bgFrame.edgeFile = media:Fetch("border", db.border)
@@ -309,19 +353,31 @@ local options = {
 	 name = L["Layout"],
 	 hidden = "IsDisabled",
 	 args = {
+	    style = {
+	       type = "select",
+	       name = L["Layout Style"],
+	       width = "full",
+	       values = {
+		  [plugin.STYLE_STRAIGHT] = L["Normal"],
+		  [plugin.STYLE_CIRCLE] = L["Circle"],
+	       },
+	       order = 1,
+	    },
 	    vertSpacing = {
 	       type = "range",
 	       name = L["Vertical Spacing"],
 	       width = "full",
-	       min = -4, max = 60, step = 0.01,
-	       order = 3
+	       min = -10, max = 60, step = 0.01,
+	       order = 3,
+	       hidden = "NotStyleStraight",
 	    }, 
 	    horizSpacing = {
 	       type = "range",
 	       name = L["Horizontal Spacing"],
 	       width = "full",
-	       min = -4, max = 60, step = 0.01,
-	       order = 3
+	       min = -10, max = 60, step = 0.01,
+	       order = 3,
+	       hidden = "NotStyleStraight",
 	    }, 
 	    scale = {
 	       type = "range",
@@ -330,13 +386,50 @@ local options = {
 	       min = 0.01, max = 5, step = 0.01,
 	       order = 10
 	    },
+	    majorRadius = {
+	       type = "range",
+	       name = L["Major Axis Radius"],
+	       width="full",
+	       desc = L["The radius of the major axis of the ellipse (horizontal radius)."],
+	       min = 10, max = 500, step = 1,
+	       order = 3,
+	       hidden = "NotStyleCircle",
+	    },
+	    minorRadius = {
+	       type = "range",
+	       name = L["Minor Axis Radius"],
+	       width="full",
+	       desc = L["The radius of the minor axis of the ellipse (vertical radius)."],
+	       min = 10, max = 500, step = 1,
+	       order = 3,
+	       hidden = "NotStyleCircle",
+	    },
+	    spread = {
+	       type = "range",
+	       name = L["Icon Spread"],
+	       width="full",
+	       desc = L["The number of degrees to spread the icons over - 180 degrees is a half circle, 360 degrees is a full circle."],
+	       min = 0, max = 360, step = 0.1,
+	       order = 3,
+	       hidden = "NotStyleCircle",
+	    },
+	    startAngle = {
+	       type = "range",
+	       name = L["Start Angle"],
+	       width="full",
+	       desc = L["The angle to start putting the icons on."],
+	       min = 0, max = 360, step = 0.1,
+	       order = 3,
+	       hidden = "NotStyleCircle",
+	    },
 	    width = {
 	       type = "range",
 	       name = L["Width"],
 	       width="full",
 	       desc = L["Number of icons per row."],
 	       min = 1, max = 6, step = 1,
-	       order = 20
+	       order = 4,
+	       hidden = "NotStyleStraight",
 	    },
 	    runeOrder = {
 	       type = "select",
@@ -346,7 +439,9 @@ local options = {
 		  "BUFBUF",
 		  "BBFFUU",
 		  "BBFUFU",
-		  "FUFUBB"
+		  "FUFUBB",
+		  "BFUUFB",
+		  "BUFFUB", 
 	       },
 	       order = 30
 	    },
@@ -415,10 +510,25 @@ local options = {
 	       desc = L["Width of the border."],
 	       min = 1, max = 50, step = 0.1,
 	    },
+	    inset = {
+	       type = "range",
+	       name = L["Inset size"],
+	       desc = L["Width of the border."],
+	       min = 1, max = 50, step = 0.1,
+	    },
 	 }
       }
    }
 }
+
+
+function plugin:NotStyleStraight()
+   return db.style ~= plugin.STYLE_STRAIGHT
+end
+
+function plugin:NotStyleCircle()
+   return db.style ~= plugin.STYLE_CIRCLE
+end
 
 -- setup the options
 function plugin:SetupOptions()
