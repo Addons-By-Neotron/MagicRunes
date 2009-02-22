@@ -7,7 +7,7 @@
 ## X-Category: Combat
 ## X-eMail: neotron@gmail.com
 ## LoadManagers: AddonLoader
-## OptionalDeps: Ace3, LibBars-1.0, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets
+## OptionalDeps: Ace3, LibBars-1.0, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets, SharedMedia, SharedMedia-Blizzard
 ## SavedVariables: MagicRunesDB
 ## X-LoadOn-Class: DEATHKNIGHT
 
@@ -18,3 +18,4 @@ MagicRunes.lua
 RuneConfig.lua
 Presets.lua
 modules.xml
+

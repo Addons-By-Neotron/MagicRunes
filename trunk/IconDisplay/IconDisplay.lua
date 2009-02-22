@@ -845,9 +845,48 @@ local options = {
 			L[" - Flash Mode, Alpha Flash (color flash doesn't work)\n"]..
 			L[" - All alpha level parameters.\n\n"]..
 			L["All the other decorations and effects don't make sense for icons and thus don't work."],
+		     order = 10,
 		  },
+		  
+		  CC = {
+		     type = "group",
+		     name = L["Cooldown Count"],
+		     order = 20, 
+		     args = {
+			headerCC = {
+			   type = "header",
+			   name = L["Cooldown Count"],
+			   order = 20, 
+			},
+			descCC = {
+			   type = "description",
+			   name = L["Currently there's no built-in option to display cooldown count text on the icons. You can however install an addon such as OmniCC to get this feature.\n\n"]..
+			      L["In the future you'll be able to use either an external cooldown count addon or builtin text."], 
+			   order = 30,
+			},
+		     }
+		  },
+		  buttonfacade = {
+		     type = "group",
+		     name = L["Button Facade"],
+		     order = 30,
+		     args = {
+			header = {
+			   type = "header",
+			   name = L["Button Facade"],
+			   order = 10,
+			},
+			desc = {
+			   type = "description",
+			   name =
+			      L["The icon display is fully integrated with the ButtonFacade addon. This addon lets you skin the buttons for a more personalized display.\n\n"]..
+			      L["To configure the looks, open the ButtonFacade configuration UI using the /buttonfacade command. Select Addons => MagicRunes => Icon Display.\n\n"]..
+			      L["You can find ButtonFacade and many different skins on wow.curse.com."],
+			   order = 20,
+			},		  
+		     }
+		  },		  
 	       }
-	       
 	    },
 	    background = {
 	       type = "group",
@@ -865,26 +904,6 @@ local options = {
 			L["The background frames allows you to set an optional backdrop behind the icons. You can configure the border and background texture and color.\n\n"]..
 			L["The width of the border is controlled by the edge size parameter. To add some extra padding between the border and icons you can set the padding.\n\n"]..
 			L["To be able to change the border and background you need the SharedMedia and SharedMedia-Blizzard addons installed. You can find these at curse.com.\n\n"],
-		     order = 20,
-		  },		  
-	       }
-	    },
-	    buttonfacade = {
-	       type = "group",
-	       name = L["Using Button Facade"],
-	       order = 30,
-	       args = {
-		  header = {
-		     type = "header",
-		     name = L["Using Button Facade"],
-		     order = 10,
-		  },
-		  desc = {
-		     type = "description",
-		     name =
-			L["The icon display is fully integrated with the ButtonFacade addon. This addon lets you skin the buttons for a more personalized display.\n\n"]..
-			L["To configure the looks, open the ButtonFacade configuration UI using the /buttonfacade command. Select Addons => MagicRunes => Icon Display.\n\n"]..
-			L["You can find ButtonFacade and many different skins on wow.curse.com."],
 		     order = 20,
 		  },		  
 	       }
