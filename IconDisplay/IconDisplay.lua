@@ -659,6 +659,7 @@ local options = {
 	    spacer1 = {
 	       type = "description",
 	       width = "full",
+	       name = "",
 	       order = 35,
 	    },
 	    border = {
@@ -680,6 +681,7 @@ local options = {
 	    spacer2 = {
 	       type = "description",
 	       width = "full",
+	       name = "",
 	       order = 55,
 	    },
 	    edgeSize = {
