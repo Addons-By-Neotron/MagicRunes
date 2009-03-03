@@ -125,6 +125,12 @@ local runeSets = {
       "Interface\\AddOns\\MagicRunes\\Textures\\VixenFrost.tga", 
       "Interface\\AddOns\\MagicRunes\\Textures\\VixenDeath.tga", 
    },
+   ["Gloss Orb by Camalus"] = {
+      "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbBlood.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbUnholy.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbFrost.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbDeath.tga", 
+   },
 }
 
 mod.spellCache = {}
