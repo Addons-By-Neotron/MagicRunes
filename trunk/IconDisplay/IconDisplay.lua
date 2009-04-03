@@ -86,7 +86,7 @@ local defaults = {
    -- advanced circle positions
    blood1Angle = 0,
    blood2Angle = 60,
-   unholy1Angl = 120,
+   unholy1Angle = 120,
    unholy2Angle = 180,
    frost1Angle = 240,
    frost2Angle = 300,
