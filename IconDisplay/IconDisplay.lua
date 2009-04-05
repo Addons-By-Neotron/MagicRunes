@@ -47,6 +47,7 @@ local lbfGroup
 local iconFrame 
 local iconFrameSize
 local db
+local playerInCombat = InCombatLockdown()
 
 
 -- Different layout options
@@ -62,6 +63,7 @@ local defaults = {
    horizSpacing = 1,
    scale = 1.0,
    layout = 1,
+   oocAlpha = 1, 
    runeOrder = 1,
    width = 6,
    edgeSize = 16,
@@ -107,9 +109,11 @@ local runeOrder = {
 
 -- Called every on update cycle
 local nextUpdateDelay = 0
+local runesAreActive = false
 function plugin:OnUpdate(time, runeData)
    if not db.enabled then return end
    nextUpdateDelay = nextUpdateDelay - time
+   local active = false
    if time == 0 or nextUpdateDelay <= 0 then
       nextUpdateDelay = 0.05 
       for id, data in pairs(runeData) do
@@ -117,6 +121,7 @@ function plugin:OnUpdate(time, runeData)
 	 f:SetAlpha(data.alpha)
 	 if not data.ready and data.start and data.duration then
 	    f.cooldown:SetCooldown(data.start, data.duration)
+	    active = true
 	 end
 	 
 	 -- Handle death runes changes
@@ -124,6 +129,10 @@ function plugin:OnUpdate(time, runeData)
 	    f.type = data.type
 	    f.icon:SetTexture(mod:GetRuneIcon(f.type, db.runeSet))
 	 end	 
+      end
+      if active ~= runesAreActive and db.oocAlpha ~= 1 then
+	 runesAreActive = active
+	 plugin:SetFrameColor()
       end
    end
 end
@@ -189,6 +198,7 @@ function plugin:ApplyProfile()
    plugin:ToggleLocked(mod.db.profile.locked)
    plugin:AnchorIcons()
    plugin:LoadPosition()
+   plugin:SetFrameColor()
 
    if db.enabled then iconFrame:Show() else iconFrame:Hide() end
    for id = 1,6 do
@@ -640,6 +650,14 @@ local options = {
 	 hidden = "IsDisabled",
 	 order = 30, 
 	 args = {
+	    oocAlpha = {
+	       type = "range",
+	       name = L["Out of combat alpha"],
+	       desc = L["The alpha level of the frame background when out of combat and no runes are active."],
+	       width = "full",
+	       min = 0, max = 1, step = 0.01,
+	       order = 100,
+	    }, 
 	    background = {
 	       type = 'select',
 	       dialogControl = 'LSM30_Background',
@@ -688,11 +706,13 @@ local options = {
 	       type = "range",
 	       name = L["Edge size"],
 	       desc = L["Width of the border."],
+	       width = "full", 
 	       min = 1, max = 50, step = 0.1,
 	    },
 	    padding = {
 	       type = "range",
 	       name = L["Padding"],
+	       width = "full", 
 	       desc = L["Number of pixels to insert between the border and the icons."],
 	       min = 0, max = 50, step = 0.1,
 	    },
@@ -958,7 +978,9 @@ function plugin:SetOption(info, val)
    db[var] = val
 
    -- Do any actions required due to change in parameters
-   if var == "scale" then
+   if var == "oocAlpha"  then
+      plugin:SetFrameColor()
+   elseif var == "scale" then
       iconFrame:SetScale(val)
    elseif var == "runeSet" then
       for id = 1,6 do
@@ -969,6 +991,21 @@ function plugin:SetOption(info, val)
    else
       plugin:AnchorIcons()
    end
+end
+
+function plugin:OnCombatChange(inCombat)
+   playerInCombat = inCombat
+   plugin:SetFrameColor()
+end
+
+function plugin:SetFrameColor()
+   local mod = (playerInCombat or runesAreActive) and 1 or db.oocAlpha
+   
+   local bg = db.backdropColors.backgroundColor
+   iconFrame:SetBackdropColor(bg[0], bg[1], bg[2], bg[3]*mod)
+
+   bg = db.backdropColors.borderColor
+   iconFrame:SetBackdropBorderColor(bg[0], bg[1], bg[2], bg[3]*mod)
 end
 
 function plugin:SetColorOpt(arg, r, g, b, a)
