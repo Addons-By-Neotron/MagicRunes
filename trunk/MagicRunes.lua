@@ -919,6 +919,11 @@ function mod:PLAYER_REGEN_ENABLED()
    playerInCombat = false
    idleAlphaLevel = db.alphaOOC
    mod:RefreshRuneTypes()
+   for name, plugin in pairs(mod.plugins) do
+      if plugin.OnCombatChange then
+	 plugin:OnCombatChange(playerInCombat)
+      end
+   end
 end
 
 
@@ -926,6 +931,11 @@ function mod:PLAYER_REGEN_DISABLED()
    playerInCombat = true
    idleAlphaLevel = db.alphaReady
    mod:RefreshRuneTypes()
+   for name, plugin in pairs(mod.plugins) do
+      if plugin.OnCombatChange then
+	 plugin:OnCombatChange(playerInCombat)
+      end
+   end
 end
 
 -- Config option handling below

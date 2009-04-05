@@ -72,6 +72,13 @@ local options = {
 	    width = "full",
 	    set = "HandleBlizzardRuneFrame",
 	 },
+	 growup = {
+	    type = "toggle",
+	    name = L["Reverse growth direction"],
+	    desc = L["Reverse the order in which bars are added relative to the anchor."], 
+	    width = "full",
+	    set = function(_, val) db.growup = val bars:ReverseGrowth(val) end, 
+	 },
 	 hideAnchor = {
 	    type = "toggle",
 	    name = L["Hide anchor when bars are locked."],
