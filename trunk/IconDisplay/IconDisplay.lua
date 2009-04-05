@@ -1002,10 +1002,10 @@ function plugin:SetFrameColor()
    local mod = (playerInCombat or runesAreActive) and 1 or db.oocAlpha
    
    local bg = db.backdropColors.backgroundColor
-   iconFrame:SetBackdropColor(bg[0], bg[1], bg[2], bg[3]*mod)
+   iconFrame:SetBackdropColor(bg[1], bg[2], bg[3], bg[3]*mod)
 
    bg = db.backdropColors.borderColor
-   iconFrame:SetBackdropBorderColor(bg[0], bg[1], bg[2], bg[3]*mod)
+   iconFrame:SetBackdropBorderColor(bg[1], bg[2], bg[3], bg[3]*mod)
 end
 
 function plugin:SetColorOpt(arg, r, g, b, a)
