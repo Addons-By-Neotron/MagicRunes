@@ -1,5 +1,5 @@
 ## Interface: 30000
-## Title: Magic Runes Icon Display
+## Title: Magic Runes: Icon Display
 ## Notes: An icon only rune display for Magic Runes
 ## Author: NeoTron
 ## Version: 1.0.@project-revision@
