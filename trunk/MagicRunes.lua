@@ -24,10 +24,6 @@ if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
    return
 end
 
-if not LibStub:GetLibrary("LibBars-1.0", true) then
-   LoadAddOn("LibBars-1.0") -- hrm..
-end
-
 MagicRunes = LibStub("AceAddon-3.0"):NewAddon("Magic Runes", "AceEvent-3.0", "LibBars-1.0", 
 					      "AceTimer-3.0", "AceConsole-3.0")
 local mod = MagicRunes
@@ -75,8 +71,6 @@ local addonEnabled = false
 local db, isInGroup
 local bars, hiddenBars = nil, nil
 local runebars = {}
-local plugins = {}
-mod.plugins = plugins
    
 if Logger then
    Logger:Embed(mod)
@@ -130,6 +124,12 @@ local runeSets = {
       "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbUnholy.tga", 
       "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbFrost.tga", 
       "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbDeath.tga", 
+   },
+   ["Punished by Lichborne"] = {
+      "Interface\\AddOns\\MagicRunes\\Textures\\PunishedBlood.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\PunishedUnholy.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\PunishedFrost.tga", 
+      "Interface\\AddOns\\MagicRunes\\Textures\\PunishedDeath.tga", 
    },
 }
 
@@ -213,6 +213,16 @@ function mod:GetRuneInfo(runeid, set)
 end
 
 function mod:OnInitialize()
+   -- Register some sound effects since they normally aren't available
+   media:Register("sound", "Drop", [[Sound\Interface\DropOnGround.wav]])
+   media:Register("sound", "Error", [[Sound\Interface\Error.wav]])
+   media:Register("sound", "Magic Click", [[Sound\Interface\MagicClick.wav]])
+   media:Register("sound", "Ping", [[Sound\Interface\MapPing.wav]])
+   media:Register("sound", "Socket Clunk", [[Sound\Interface\JewelcraftingFinalize.wav]])
+   media:Register("sound", "Whisper Ping", [[Sound\Interface\iTellMessage.wav]])
+   media:Register("sound", "Whisper", [[Sound\Interface\igTextPopupPing02.wav]])
+   
+
    self.db = LibStub("AceDB-3.0"):New("MagicRunesDB", defaults, "Default")
    self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
    self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileChanged")
@@ -351,14 +361,6 @@ function mod:OnEnable()
       hiddenBars:Hide()
    end
 
-   for name, plugin in pairs(mod.plugins) do
-      if plugin.OnEnable then
-	 plugin:OnEnable()
-      end
-   end
-   
-   mod.isSetup = true
-
    mod:ApplyProfile()
    if self.SetLogLevel then
       mod:SetLogLevel(self.logLevels.TRACE)
@@ -453,6 +455,11 @@ function mod:UpdateBarIcons()
    for id,data in pairs(db.bars) do
       if data.type == mod.RUNE_BAR then
 	 runebars[id]:SetIcon(mod:GetRuneIcon(GetRuneType(data.runeid)))
+      end
+   end
+   if mod.modules.RuneBars then
+      for id, f in pairs(mod.modules.RuneBars.bars) do
+	 f.icon:SetTexture(mod:GetRuneIcon(GetRuneType(f.runeId)))
       end
    end
 end
@@ -616,6 +623,19 @@ do
       end
    end
 
+
+   function mod:AddReadyFlash(bar)
+      for id,data in pairs(readyFlash) do
+	 if data and data.bar == bar then
+	    data.start = now
+	    return
+	 end
+      end
+      if not inserted then
+	 readyFlash[#readyFlash+1] = { start = now, bar = bar }
+      end
+   end
+   
    local function UpdateBarDisplay()
       -- Check each bar for update
       for id,barData in ipairs(db.bars) do
@@ -673,16 +693,7 @@ do
 		     bar.notReady = nil
 		     if bar.gcdnotify then
 			if db.readyFlash and barData.type == mod.RUNE_BAR then
-			   local inserted
-			   for id,data in pairs(readyFlash) do
-			      if data and data.bar == bar then
-				 data.start = now
-				 inserted = true
-			      end
-			   end
-			   if not inserted then
-			      readyFlash[#readyFlash+1] = { start = now, bar = bar }
-			   end
+			   mod:AddReadyFlash(bar)
 			end
 		     end
 		     bar.gcdnotify = nil
@@ -750,10 +761,10 @@ do
 	 PlaySoundFile(mod.soundFile)
       end
 
-      -- Execute the update method in each plugin
-      for name, plugin in pairs(mod.plugins) do
-	 if plugin.OnUpdate then
-	    plugin:OnUpdate(t or 0, runeData, targetSpellInfo, playerBuffInfo)
+      -- Execute the update method in each module
+      for name, module in pairs(mod.modules) do
+	 if module.OnUpdate then
+	    module:OnUpdate(t or 0, runeData, targetSpellInfo, playerBuffInfo)
 	 end
       end
 
@@ -919,9 +930,9 @@ function mod:PLAYER_REGEN_ENABLED()
    playerInCombat = false
    idleAlphaLevel = db.alphaOOC
    mod:RefreshRuneTypes()
-   for name, plugin in pairs(mod.plugins) do
-      if plugin.OnCombatChange then
-	 plugin:OnCombatChange(playerInCombat)
+   for name, module in pairs(mod.modules) do
+      if module.OnCombatChange then
+	 module:OnCombatChange(playerInCombat)
       end
    end
 end
@@ -931,9 +942,9 @@ function mod:PLAYER_REGEN_DISABLED()
    playerInCombat = true
    idleAlphaLevel = db.alphaReady
    mod:RefreshRuneTypes()
-   for name, plugin in pairs(mod.plugins) do
-      if plugin.OnCombatChange then
-	 plugin:OnCombatChange(playerInCombat)
+   for name, module in pairs(mod.modules) do
+      if module.OnCombatChange then
+	 module:OnCombatChange(playerInCombat)
       end
    end
 end
@@ -982,9 +993,9 @@ function mod:ApplyProfile()
    mod.UpdateBars()
    bars:SortBars()
 
-   for id,plugin in pairs(mod.plugins) do
-      if plugin.ApplyProfile then
-	 plugin:ApplyProfile()
+   for id,module in pairs(mod.modules) do
+      if module.ApplyProfile then
+	 module:ApplyProfile()
       end
    end
 end
@@ -1020,9 +1031,9 @@ function mod:ToggleLocked(locked)
       end
    end
    bars:SortBars()
-   for id,plugin in pairs(mod.plugins) do
-      if plugin.ToggleLocked then
-	 plugin:ToggleLocked(db.locked)
+   for id,module in pairs(mod.modules) do
+      if module.ToggleLocked then
+	 module:ToggleLocked(db.locked)
       end
    end
 end
@@ -1101,14 +1112,4 @@ end
 function mod:SortAllBars()
    hiddenBars:SortBars()
    bars:SortBars()
-end
-
--- crude method to register a new plugin. It will enable it if Magic Runes is already enabled
--- i.e if it's loaded on demand or similar
-function mod:RegisterPlugin(name, plugin)
-   mod.plugins[name] = plugin
-   if mod.isSetup and plugin.OnEnable then
-      -- Already enabled so do the setup now
-      plugin:OnEnable()
-   end
 end

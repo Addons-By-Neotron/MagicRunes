@@ -24,7 +24,9 @@ This file is used for an optiona advanced icon-only display mode
 
 if not MagicRunes then return end -- not a DK
 
-local LibStub = LibStub
+local MODULE_NAME = "IconDisplay"
+local mod = MagicRunes
+local module = mod:NewModule(MODULE_NAME, "LibMagicUtil-1.0")
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicRunes", false)
 local LBF = LibStub("LibButtonFacade", true)
 local media = LibStub("LibSharedMedia-3.0")
@@ -41,19 +43,14 @@ local cos = math.cos
 local degreeToRadian = math.pi / 180
 
 local mod = MagicRunes
-local plugin = {}
 local icons = {}
-local lbfGroup
-local iconFrame 
-local iconFrameSize
-local db
 local playerInCombat = InCombatLockdown()
 
 
 -- Different layout options
-plugin.STYLE_STRAIGHT    = 1
-plugin.STYLE_CIRCLE      = 2
-plugin.STYLE_ELLIPSE     = 3
+module.STYLE_STRAIGHT    = 1
+module.STYLE_CIRCLE      = 2
+module.STYLE_ELLIPSE     = 3
 
 
 -- Also includes defaults
@@ -75,7 +72,7 @@ local defaults = {
    },
    background = "Solid",
    border = "None",
-   style = plugin.STYLE_STRAIGHT,
+   style = module.STYLE_STRAIGHT,
    tile = false,
    tileSize = 32,
    -- Circle
@@ -103,15 +100,14 @@ local runeOrder = {
    { 5, 3, 6, 4, 1, 2}, -- FUFUBB
    { 1, 5, 3, 4, 6, 2}, -- BFUUFB
    { 1, 3, 5, 6, 4, 2}, -- BUFFUB
-
 }
 
 
 -- Called every on update cycle
 local nextUpdateDelay = 0
 local runesAreActive = false
-function plugin:OnUpdate(time, runeData)
-   if not db.enabled then return end
+
+function module:OnUpdate(time, runeData)
    nextUpdateDelay = nextUpdateDelay - time
    local active = false
    if time == 0 or nextUpdateDelay <= 0 then
@@ -127,45 +123,36 @@ function plugin:OnUpdate(time, runeData)
 	 -- Handle death runes changes
 	 if f.type ~= data.type then
 	    f.type = data.type
-	    f.icon:SetTexture(mod:GetRuneIcon(f.type, db.runeSet))
+	    f.icon:SetTexture(mod:GetRuneIcon(f.type, module.db.runeSet))
 	 end	 
       end
-      if active ~= runesAreActive and db.oocAlpha ~= 1 then
+      if active ~= runesAreActive and module.db.oocAlpha ~= 1 then
 	 runesAreActive = active
-	 plugin:SetFrameColor()
+	 module:SetFrameColor()
       end
    end
 end
 
-function plugin:SkinChanged(skinId, gloss, backdrop, group, button, colors)
-   db.skinId = skinId
-   db.gloss = gloss
-   db.backdrop = backdrop
-   db.colors = colors
+function module:SkinChanged(skinId, gloss, backdrop, group, button, colors)
+   if group == "Icon Display" then
+      module.db.skinId = skinId
+      module.db.gloss = gloss
+      module.db.backdrop = backdrop
+      module.db.colors = colors
+   end
 end
 
-function plugin:OnEnable()
-   plugin:SetupDefaultOptions()
-   -- Skin setup
-   if LBF then
-      lbfGroup = LBF:Group("MagicRunes", "Icon Display")
-      lbfGroup.SkinID = db.skinId or "Blizzard"
-      lbfGroup.Backdrop = db.backdrop
-      lbfGroup.Gloss = db.gloss
-      lbfGroup.Colors = db.colors or {}
-      
-      LBF:RegisterSkinCallback("MagicRunes", self.SkinChanged, self)
-   end
-
-   iconFrame = CreateFrame("Frame", "MagicRunesIconFrame", UIParent)
-   iconFrame:SetScale(db.scale)
-   iconFrame:SetMovable(true)
-   iconFrame:SetFrameLevel(0)
-   iconFrame:SetScript("OnDragStart",
+function module:OnInitialize()
+   module:SetupDefaultOptions()
+   module.frame = CreateFrame("Frame", "MagicRunesIconFrame", UIParent)
+   module.frame:SetScale(module.db.scale)
+   module.frame:SetMovable(true)
+   module.frame:SetFrameLevel(0)
+   module.frame:SetScript("OnDragStart",
 		       function(self) self:StartMoving() end)
-   iconFrame:SetScript("OnDragStop",
+   module.frame:SetScript("OnDragStop",
 		       function(self)
-			  plugin:SavePosition()
+			  module:SavePosition()
 			  self:StopMovingOrSizing()
 		       end)
    
@@ -173,88 +160,100 @@ function plugin:OnEnable()
       local fn = "MagicRunesIcon"..id
       
       -- Rune frame
-      local f = CreateFrame("Button", fn , iconFrame, "ActionButtonTemplate")
-      iconFrameSize = f:GetWidth()
+      local f = CreateFrame("Button", fn , module.frame, "ActionButtonTemplate")
+      module.frameSize = f:GetWidth()
       f:EnableMouse(false)
       f.cooldown = _G[fn.."Cooldown"]
       f.icon = _G[fn.."Icon"]
-      local icon, type = select(2, mod:GetRuneInfo(id, db.runeSet))
+      local icon, type = select(2, mod:GetRuneInfo(id, module.db.runeSet))
       f.icon:SetTexture(icon)
       f.type = type
       f.runeId = id
       icons[id] = f
-      
-      if lbfGroup then
-	 -- Button Facade support
-	 lbfGroup:AddButton(f)
+   end
+end
+
+function module:OnEnable()
+   -- Skin setup
+   if LBF then
+      mod:Print("ENABLING LBF SUPPORT")
+      local lbfGroup = LBF:Group("MagicRunes", "Icon Display")
+      lbfGroup.SkinID = module.db.skinId or "Zoomed"
+      lbfGroup.Backdrop = module.db.backdrop
+      lbfGroup.Gloss = module.db.gloss
+      lbfGroup.Colors = module.db.colors or {}
+      LBF:RegisterSkinCallback("MagicRunes", module.SkinChanged, self)
+      for i = 1, 6 do 
+	 lbfGroup:AddButton(icons[i])
       end
    end
-   plugin:SetupOptions()
-   plugin:ApplyProfile()
+
+   module:SetupOptions()
+   module:ApplyProfile()
 end
 
-function plugin:ApplyProfile()
-   plugin:SetupDefaultOptions()
-   plugin:ToggleLocked(mod.db.profile.locked)
-   plugin:AnchorIcons()
-   plugin:LoadPosition()
-   plugin:SetFrameColor()
+function module:ApplyProfile()
+   module:SetupDefaultOptions()
+   module:ToggleLocked(mod.db.profile.locked)
+   module:AnchorIcons()
+   module:LoadPosition()
+   module:SetFrameColor()
 
-   if db.enabled then iconFrame:Show() else iconFrame:Hide() end
+   if module.db.enabled then module.frame:Show() else module.frame:Hide() end
    for id = 1,6 do
-      icons[id].icon:SetTexture(mod:GetRuneIcon(icons[id].type, db.runeSet))
+      icons[id].icon:SetTexture(mod:GetRuneIcon(icons[id].type, module.db.runeSet))
    end
 end
 
-function plugin:SavePosition()
-   local s = iconFrame:GetEffectiveScale()
-   local top = iconFrame:GetTop()
+function module:SavePosition()
+   local s = module.frame:GetEffectiveScale()
+   local top = module.frame:GetTop()
    if not top then return end -- hmm
-   if db.flipy then
-      db.posy = iconFrame:GetBottom() * s
-      db.anchor = "BOTTOM"
+   if module.db.flipy then
+      module.db.posy = module.frame:GetBottom() * s
+      module.db.anchor = "BOTTOM"
    else
-      db.posy =  top * s - UIParent:GetHeight()*UIParent:GetEffectiveScale() 
-      db.anchor = "TOP"
+      module.db.posy =  top * s - UIParent:GetHeight()*UIParent:GetEffectiveScale() 
+      module.db.anchor = "TOP"
    end
-   if db.flipx then
-      db.anchor = db.anchor .. "RIGHT"
-      db.posx = iconFrame:GetRight() * s - UIParent:GetWidth()*UIParent:GetEffectiveScale() 
+   if module.db.flipx then
+      module.db.anchor = module.db.anchor .. "RIGHT"
+      module.db.posx = module.frame:GetRight() * s - UIParent:GetWidth()*UIParent:GetEffectiveScale() 
    else
-      db.anchor = db.anchor .. "LEFT"
-      db.posx = iconFrame:GetLeft() * s
+      module.db.anchor = module.db.anchor .. "LEFT"
+      module.db.posx = module.frame:GetLeft() * s
    end
 end
 
-function plugin:LoadPosition(bin)
-   local posx = db.posx 
-   local posy = db.posy
-   local anchor = db.anchor
-   iconFrame:ClearAllPoints()
+function module:LoadPosition(bin)
+   local posx = module.db.posx 
+   local posy = module.db.posy
+   local anchor = module.db.anchor
+   module.frame:ClearAllPoints()
    if not anchor then anchor = "TOPLEFT" end
 
-   local s = iconFrame:GetEffectiveScale()
+   local s = module.frame:GetEffectiveScale()
 
    if posx and posy then
-      iconFrame:SetPoint(anchor, posx/s, posy/s)
+      module.frame:SetPoint(anchor, posx/s, posy/s)
    else
-      iconFrame:SetPoint(anchor, UIParent, "CENTER")
+      module.frame:SetPoint(anchor, UIParent, "CENTER")
    end
 end
 
-function plugin:AnchorIcons()
+function module:AnchorIcons()
    for id = 1,6 do icons[id]:ClearAllPoints() end
 
-   if db.style == plugin.STYLE_STRAIGHT then
-      plugin:AnchorIconsStraight()
-   elseif db.style == plugin.STYLE_CIRCLE or db.style == plugin.STYLE_ELLIPSE then
-      if db.advanced then
-	 plugin:AnchorIconsEllipiseAdvanced()
+   if module.db.style == module.STYLE_STRAIGHT then
+      module:AnchorIconsStraight()
+   elseif module.db.style == module.STYLE_CIRCLE or module.db.style == module.STYLE_ELLIPSE then
+      if module.db.advanced then
+	 module:AnchorIconsEllipiseAdvanced()
       else
-	 plugin:AnchorIconsEllipiseBasic()
+	 module:AnchorIconsEllipiseBasic()
       end
    end
-   plugin:FixBackdrop()
+   module:FixBackdrop()
 end
 
 do
@@ -267,19 +266,19 @@ do
       "frost1Angle",
       "frost2Angle"
    }
-   function plugin:AnchorIconsEllipiseAdvanced()
+   function module:AnchorIconsEllipiseAdvanced()
       local mx, my
       local iconPositions = {}
       local minx, miny, maxx, maxy = 0, 0, 0, 0
-      local inset = icons[1]:GetWidth()/2 + db.padding
-      if db.style == plugin.STYLE_ELLIPSE then
-	 mx = db.majorRadius
-	 my = db.minorRadius
+      local inset = icons[1]:GetWidth()/2 + module.db.padding
+      if module.db.style == module.STYLE_ELLIPSE then
+	 mx = module.db.majorRadius
+	 my = module.db.minorRadius
       else
-	 mx, my = db.radius, db.radius
+	 mx, my = module.db.radius, module.db.radius
       end
-      if db.border ~= "None" then
-	 inset = inset + db.edgeSize / 4
+      if module.db.border ~= "None" then
+	 inset = inset + module.db.edgeSize / 4
       end
       for id  = 1, 6 do
 	 local angle = db[idToAngle[id]]*degreeToRadian
@@ -292,33 +291,33 @@ do
 	 iconPositions[#iconPositions+1] = { id = id, x = x, y = y } 
       end
       for _,data in ipairs(iconPositions) do
-	 icons[data.id]:SetPoint("CENTER", iconFrame, "TOPLEFT", inset + data.x - minx, -(inset + data.y - miny))
+	 icons[data.id]:SetPoint("CENTER", module.frame, "TOPLEFT", inset + data.x - minx, -(inset + data.y - miny))
       end
-      iconFrame:SetWidth(maxx - minx + inset*2)
-      iconFrame:SetHeight(maxy - miny + inset*2)
+      module.frame:SetWidth(maxx - minx + inset*2)
+      module.frame:SetHeight(maxy - miny + inset*2)
    end
    
-   function plugin:AnchorIconsEllipiseBasic()
+   function module:AnchorIconsEllipiseBasic()
       local iconPositions = {}
-      local angle = db.startAngle* degreeToRadian
-      local step = db.spread / 6 * degreeToRadian
+      local angle = module.db.startAngle* degreeToRadian
+      local step = module.db.spread / 6 * degreeToRadian
       local mx, my
-      if db.reverseOrder then
+      if module.db.reverseOrder then
 	 step = -step
       end
-      if db.style == plugin.STYLE_ELLIPSE then
-	 mx = db.majorRadius
-	 my = db.minorRadius
+      if module.db.style == module.STYLE_ELLIPSE then
+	 mx = module.db.majorRadius
+	 my = module.db.minorRadius
       else
-	 mx, my = db.radius, db.radius
+	 mx, my = module.db.radius, module.db.radius
       end
       local minx, miny, maxx, maxy = 0, 0, 0, 0
-      local inset = icons[1]:GetWidth()/2 + db.padding
-      if db.border ~= "None" then
-	 inset = inset + db.edgeSize / 4
+      local inset = icons[1]:GetWidth()/2 + module.db.padding
+      if module.db.border ~= "None" then
+	 inset = inset + module.db.edgeSize / 4
       end
       
-      for _,id in ipairs(runeOrder[db.runeOrder]) do
+      for _,id in ipairs(runeOrder[module.db.runeOrder]) do
 	 local x = mx * cos(angle)
 	 local y = my * sin(angle)
 	 if x < minx then minx = x end
@@ -329,24 +328,24 @@ do
 	 angle = angle + step
       end
       for _,data in ipairs(iconPositions) do
-	 icons[data.id]:SetPoint("CENTER", iconFrame, "TOPLEFT", inset + data.x - minx, -(inset + data.y - miny))
+	 icons[data.id]:SetPoint("CENTER", module.frame, "TOPLEFT", inset + data.x - minx, -(inset + data.y - miny))
       end
-      iconFrame:SetWidth(maxx - minx + inset*2)
-      iconFrame:SetHeight(maxy - miny + inset*2)
+      module.frame:SetWidth(maxx - minx + inset*2)
+      module.frame:SetHeight(maxy - miny + inset*2)
    end
 end
 
 
-function plugin:AnchorIconsStraight()
+function module:AnchorIconsStraight()
    local anchor, xmulti, ymulti, otheranchor
    local count = 1
    
-   local inset = db.padding
-   if db.border ~= "None" then
-      inset = inset + db.edgeSize / 4
+   local inset = module.db.padding
+   if module.db.border ~= "None" then
+      inset = inset + module.db.edgeSize / 4
    end
    
-   if db.flipy then
+   if module.db.flipy then
       anchor = "BOTTOM"
       ymulti = 1
    else
@@ -354,7 +353,7 @@ function plugin:AnchorIconsStraight()
       ymulti = -1
    end
    
-   if db.flipx then
+   if module.db.flipx then
       anchor = anchor .. "RIGHT"
       xmulti = -1 
    else
@@ -362,78 +361,151 @@ function plugin:AnchorIconsStraight()
       xmulti = 1
    end
    
-   local hpadding = (iconFrameSize + (db.horizSpacing or 0))
-   local vpadding = (iconFrameSize + (db.vertSpacing or 0))
+   local hpadding = (module.frameSize + (module.db.horizSpacing or 0))
+   local vpadding = (module.frameSize + (module.db.vertSpacing or 0))
    
    local height = inset
    local xoffset = inset
    
-   for _,id in ipairs(runeOrder[db.runeOrder]) do
-      if count > db.width then
+   for _,id in ipairs(runeOrder[module.db.runeOrder]) do
+      if count > module.db.width then
 	 xoffset = inset
 	 count = 1
 	 height = height + vpadding
       end
       
-      icons[id]:SetPoint(anchor, iconFrame, anchor, xmulti*xoffset, ymulti*height)
+      icons[id]:SetPoint(anchor, module.frame, anchor, xmulti*xoffset, ymulti*height)
       
       count = count + 1
       xoffset = xoffset + hpadding
    end
-   iconFrame:SetHeight(inset*2 + ceil(6/db.width)*vpadding-db.vertSpacing)
-   iconFrame:SetWidth(inset*2 + db.width*hpadding - db.horizSpacing)
+   module.frame:SetHeight(inset*2 + ceil(6/module.db.width)*vpadding-module.db.vertSpacing)
+   module.frame:SetWidth(inset*2 + module.db.width*hpadding - module.db.horizSpacing)
 end
 
--- set up the backgrop for the icon frame
-function plugin:FixBackdrop()   
-   local bgFrame = iconFrame:GetBackdrop()
-   if not bgFrame then
-      bgFrame = {
-	 insets = {left = 1, right = 1, top = 1, bottom = 1}
-      }
-   end
-
-   local edge = 0
-   local inset = 0
-   if db.border ~= "None" then
-      edge = db.edgeSize
-      inset = db.edgeSize / 4
-   end
-   bgFrame.edgeSize = edge
-   bgFrame.insets.left   = inset
-   bgFrame.insets.right  = inset
-   bgFrame.insets.top    = inset
-   bgFrame.insets.bottom = inset
-
-   bgFrame.tile = db.tile
-   bgFrame.tileSize = db.tileSize
-
-   bgFrame.edgeFile = media:Fetch("border", db.border)
-   bgFrame.bgFile = media:Fetch("background", db.background)
-   iconFrame:SetBackdrop(bgFrame)
-   iconFrame:SetBackdropColor(unpack(db.backdropColors.backgroundColor))
-   iconFrame:SetBackdropBorderColor(unpack(db.backdropColors.borderColor))
-end
-
-function plugin:ToggleLocked(locked)
+function module:ToggleLocked(locked)
+   if not module.frame then return end
    if locked then
-      iconFrame:RegisterForDrag()
-      iconFrame:EnableMouse(false)
+      module.frame:RegisterForDrag()
+      module.frame:EnableMouse(false)
    else
-      iconFrame:RegisterForDrag("LeftButton")
-      iconFrame:EnableMouse(true)
+      module.frame:RegisterForDrag("LeftButton")
+      module.frame:EnableMouse(true)
    end      
+end
+
+
+function module:NotStyleStraight()
+   return module.db.style ~= module.STYLE_STRAIGHT
+end
+
+function module:NotStyleCircle()
+   return module.db.style ~= module.STYLE_CIRCLE
+end
+
+function module:NotStyleCircleOrEllipse()
+   return module.db.style ~= module.STYLE_CIRCLE and module.db.style ~= module.STYLE_ELLIPSE
+end
+
+function module:NotStyleCircleOrEllipseBasic()
+   return module.db.advanced or module.db.style ~= module.STYLE_CIRCLE and module.db.style ~= module.STYLE_ELLIPSE 
+end
+
+function module:NotStyleCircleOrEllipseAdvanced()
+   return not module.db.advanced or module.db.style ~= module.STYLE_CIRCLE and module.db.style ~= module.STYLE_ELLIPSE 
+end
+
+function module:NotStyleAdvanced()
+   return module.db.advanced and module.db.style ~= module.STYLE_STRAIGHT
+end
+
+function module:NotStyleEllipse()
+   return module.db.style ~= module.STYLE_ELLIPSE
+end
+
+-- setup the options
+function module:SetupOptions()
+   module.options.args.backgroundFrame = module:GetConfigTemplate("background")
+   module.options.args.backgroundFrame.hidden = "IsDisabled"
+   module.options.args.backgroundFrame.order = 30
+   module.options.args.backgroundFrame.args.oocAlpha = {
+      type = "range",
+      name = L["Out of combat alpha"],
+      desc = L["The alpha level of the frame background when out of combat and no runes are active."],
+      width = "full",
+      min = 0, max = 1, step = 0.01,
+      order = 75,
+   }, 
+   mod:OptReg("Icon Display", module.options, L["Icon Display"]) -- fixme: module config
+end
+
+function module:OnOptionChanged(var, val)
+   -- Do any actions required due to change in parameters
+   if var == "oocAlpha"  then
+      module:SetFrameColor()
+   elseif var == "scale" then
+      module.frame:SetScale(val)
+   elseif var == "runeSet" then
+      for id = 1,6 do
+	 icons[id].icon:SetTexture(mod:GetRuneIcon(icons[id].type, module.db.runeSet))
+      end
+   elseif var == "enabled" then
+      if val then module.frame:Show() else module.frame:Hide() end
+   else
+      module:AnchorIcons()
+   end
+end
+
+function module:OnCombatChange(inCombat)
+   playerInCombat = inCombat
+   module:SetFrameColor()
+end
+
+function module:SetFrameColor()
+   local mod = (playerInCombat or runesAreActive) and 1 or module.db.oocAlpha
+
+   local bg = module.db.backdropColors.backgroundColor
+   module.frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4]*mod)
+
+   bg = module.db.backdropColors.borderColor
+   module.frame:SetBackdropBorderColor(bg[1], bg[2], bg[3], bg[4]*mod)
+end
+
+function module:SetColorOpt(arg, r, g, b, a)
+   local color = arg[#arg]
+   module.db.backdropColors[color][1] = r
+   module.db.backdropColors[color][2] = g
+   module.db.backdropColors[color][3] = b
+   module.db.backdropColors[color][4] = a
+   module:FixBackdrop()
+end
+
+function module:GetColorOpt(arg)
+   local color = arg[#arg]
+   return unpack(module.db.backdropColors[color])
+end
+
+function module:IsDisabled() return not module.db.enabled end
+
+function module:SetupDefaultOptions()
+   module.db = mod.db.profile.icondisplay or {}
+   for key, val in pairs(defaults) do
+      if module.db[key] == nil then
+	 module.db[key] = val
+      end
+   end
+   mod.db.profile.icondisplay = module.db
 end
 
 
 -- Configuration stuff
 
-local options = {
+module.options = {
    type = "group",
    name = L["Icon Display"],
-   handler = plugin,
-   get = "GetOption",
-   set = "SetOption",
+   handler = module,
+   get = "_GetOption",
+   set = "_SetOption",
    childGroups = "tab",
    args = {
       enabled = {
@@ -445,9 +517,9 @@ local options = {
 	 type = "select",
 	 name = L["Layout Style"],
 	 values = {
-	    [plugin.STYLE_STRAIGHT] = L["Normal"],
-	    [plugin.STYLE_CIRCLE] = L["Circle"],
-	    [plugin.STYLE_ELLIPSE] = L["Ellipse"],
+	    [module.STYLE_STRAIGHT] = L["Normal"],
+	    [module.STYLE_CIRCLE] = L["Circle"],
+	    [module.STYLE_ELLIPSE] = L["Ellipse"],
 	 },
 	 order = 2, 
 	 hidden = "IsDisabled",
@@ -644,94 +716,6 @@ local options = {
 	    },
 	 }
       },
-      backgroundFrame = {
-	 type = "group",
-	 name = L["Background Frame"],
-	 hidden = "IsDisabled",
-	 order = 30, 
-	 args = {
-	    oocAlpha = {
-	       type = "range",
-	       name = L["Out of combat alpha"],
-	       desc = L["The alpha level of the frame background when out of combat and no runes are active."],
-	       width = "full",
-	       min = 0, max = 1, step = 0.01,
-	       order = 100,
-	    }, 
-	    background = {
-	       type = 'select',
-	       dialogControl = 'LSM30_Background',
-	       name = L["Background Texture"],
-	       desc = L["The background texture used for the bin."], 
-	       order = 20,
-	       values = AceGUIWidgetLSMlists.background, 
-	    },
-	    backgroundColor = {
-	       type = "color",
-	       name = L["Background Color"],
-	       hasAlpha = true,
-	       set = "SetColorOpt",
-	       get = "GetColorOpt",
-	       order = 30,
-	    },
-	    spacer1 = {
-	       type = "description",
-	       width = "full",
-	       name = "",
-	       order = 35,
-	    },
-	    border = {
-	       type = 'select',
-	       dialogControl = 'LSM30_Border',
-	       name = L["Border Texture"],
-	       desc = L["The border texture used for the bin."],
-	       order = 40,
-	       values = AceGUIWidgetLSMlists.border, 
-	    },
-	    borderColor = {
-	       type = "color",
-	       name = L["Border color"],
-	       hasAlpha = true,
-	       set = "SetColorOpt",
-	       get = "GetColorOpt",
-	       order = 50,
-	    },
-	    spacer2 = {
-	       type = "description",
-	       width = "full",
-	       name = "",
-	       order = 55,
-	    },
-	    edgeSize = {
-	       type = "range",
-	       name = L["Edge size"],
-	       desc = L["Width of the border."],
-	       width = "full", 
-	       min = 1, max = 50, step = 0.1,
-	    },
-	    padding = {
-	       type = "range",
-	       name = L["Padding"],
-	       width = "full", 
-	       desc = L["Number of pixels to insert between the border and the icons."],
-	       min = 0, max = 50, step = 0.1,
-	    },
-	    tile = {
-	       type = "toggle",
-	       name = L["Tile Background"],
-	       desc = L["Whether or not to tile the background texture."],
-	       order = 100,
-	    },
-	    tileSize = {
-	       type = "range",
-	       name = L["Tile Size"],
-	       desc = L["The size in pixels of the background tiles."],
-	       min = 1, max = 200, step = 0.1, 
-	       order = 110,
-	       disabled = function() return not db.tile end,
-	    },
-	 }
-      },
       help = {
 	 type = "group",
 	 name = L["Documentation"],
@@ -903,7 +887,7 @@ local options = {
 			   name =
 			      L["The icon display is fully integrated with the ButtonFacade addon. This addon lets you skin the buttons for a more personalized display.\n\n"]..
 			      L["To configure the looks, open the ButtonFacade configuration UI using the /buttonfacade command. Select Addons => MagicRunes => Icon Display.\n\n"]..
-			      L["You can find ButtonFacade and many different skins on wow.curse.com."],
+			      L["You can find ButtonFacade and many different skins on http://wow.curse.com/."],
 			   order = 20,
 			},		  
 		     }
@@ -925,7 +909,7 @@ local options = {
 		     name =
 			L["The background frames allows you to set an optional backdrop behind the icons. You can configure the border and background texture and color.\n\n"]..
 			L["The width of the border is controlled by the edge size parameter. To add some extra padding between the border and icons you can set the padding.\n\n"]..
-			L["To be able to change the border and background you need the SharedMedia and SharedMedia-Blizzard addons installed. You can find these at curse.com.\n\n"],
+			L["To be able to change the border and background you need the SharedMedia and SharedMedia-Blizzard addons installed. You can find these at http://wow.curse.com/\n\n"],
 		     order = 20,
 		  },		  
 	       }
@@ -934,111 +918,4 @@ local options = {
       }
    }
 }
-
-
-function plugin:NotStyleStraight()
-   return db.style ~= plugin.STYLE_STRAIGHT
-end
-
-function plugin:NotStyleCircle()
-   return db.style ~= plugin.STYLE_CIRCLE
-end
-
-function plugin:NotStyleCircleOrEllipse()
-   return db.style ~= plugin.STYLE_CIRCLE and db.style ~= plugin.STYLE_ELLIPSE
-end
-
-function plugin:NotStyleCircleOrEllipseBasic()
-   return db.advanced or db.style ~= plugin.STYLE_CIRCLE and db.style ~= plugin.STYLE_ELLIPSE 
-end
-
-function plugin:NotStyleCircleOrEllipseAdvanced()
-   return not db.advanced or db.style ~= plugin.STYLE_CIRCLE and db.style ~= plugin.STYLE_ELLIPSE 
-end
-
-function plugin:NotStyleAdvanced()
-   return db.advanced and db.style ~= plugin.STYLE_STRAIGHT
-end
-
-function plugin:NotStyleEllipse()
-   return db.style ~= plugin.STYLE_ELLIPSE
-end
-
--- setup the options
-function plugin:SetupOptions()
-   mod:OptReg("Magic Runes", options, L["Icon Display"]) -- fixme: plugin config
-end
-
-function plugin:GetOption(info)
-   return db[info[#info]]
-end
-
-function plugin:SetOption(info, val)
-   local var = info[#info]
-   db[var] = val
-
-   -- Do any actions required due to change in parameters
-   if var == "oocAlpha"  then
-      plugin:SetFrameColor()
-   elseif var == "scale" then
-      iconFrame:SetScale(val)
-   elseif var == "runeSet" then
-      for id = 1,6 do
-	 icons[id].icon:SetTexture(mod:GetRuneIcon(icons[id].type, db.runeSet))
-      end
-   elseif var == "enabled" then
-      if val then iconFrame:Show() else iconFrame:Hide() end
-   else
-      plugin:AnchorIcons()
-   end
-end
-
-function plugin:OnCombatChange(inCombat)
-   playerInCombat = inCombat
-   plugin:SetFrameColor()
-end
-
-function plugin:SetFrameColor()
-   local mod = (playerInCombat or runesAreActive) and 1 or db.oocAlpha
-   
-   local bg = db.backdropColors.backgroundColor
-   iconFrame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4]*mod)
-
-   bg = db.backdropColors.borderColor
-   iconFrame:SetBackdropBorderColor(bg[1], bg[2], bg[3], bg[4]*mod)
-end
-
-function plugin:SetColorOpt(arg, r, g, b, a)
-   local color = arg[#arg]
-   db.backdropColors[color][1] = r
-   db.backdropColors[color][2] = g
-   db.backdropColors[color][3] = b
-   db.backdropColors[color][4] = a
-   plugin:FixBackdrop()
-end
-
-function plugin:GetColorOpt(arg)
-   local color = arg[#arg]
-   return unpack(db.backdropColors[color])
-end
-
-function plugin:IsDisabled() return not db.enabled end
-
-function plugin:SetupDefaultOptions()
-   db = mod.db.profile.icondisplay
-   if not db then
-      db = defaults
-      mod.db.profile.icondisplay = db
-   else
-      for key, val in pairs(defaults) do
-	 if db[key] == nil then
-	    db[key] = val
-	 end
-      end
-   end   
-end
-
--- Register with the mothership
-mod:RegisterPlugin("IconDisplay", plugin)
-
 

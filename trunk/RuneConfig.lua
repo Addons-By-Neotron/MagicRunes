@@ -605,8 +605,7 @@ function mod:SetBarOption(info, val)
    if var == "runes" and (not data.icon or data.icon == "" or data.icon == mod:GetRuneIcon(data.runes)) then
       data.icon = mod:GetRuneIcon(val)
    end
-   data[var] = val
-   
+   data[var] = val   
    mod:CreateBars()
    mod:SortAllBars()
    mod.UpdateBars()
