@@ -1,0 +1,15 @@
+## Interface: 30000
+## Title: Magic Runes: Rune Bars [beta version]
+## Notes: An new rune bar display for Magic Runes - Still IN DEVELOPMENT
+## Author: NeoTron
+## Version: 1.0.@project-revision@
+## DefaultState: enabled
+## X-Category: Combat
+## X-eMail: neotron@gmail.com
+## LoadManagers: AddonLoader
+## SavedVariables: MagicRunesDB
+## RequiredDeps: MagicRunes
+## X-LoadOn-Class: DEATHKNIGHT
+
+RuneBars.lua
+Libs\LibSimpleBar-1.0\LibSimpleBar-1.0.lua
