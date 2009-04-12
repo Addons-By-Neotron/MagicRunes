@@ -19,7 +19,8 @@ local files = {
    "RuneConfig.lua",
    "MagicRunes.lua",
    "Presets.lua",
-   "IconDisplay/IconDisplay.lua"
+   "IconDisplay/IconDisplay.lua", 
+   "RuneBars/RuneBars.lua"
    
 }
 
