@@ -11,5 +11,4 @@
 ## RequiredDeps: MagicRunes
 ## X-LoadOn-Class: DEATHKNIGHT
 
-Libs\LibSimpleBar-1.0\LibSimpleBar-1.0.lua
 RuneBars.lua
