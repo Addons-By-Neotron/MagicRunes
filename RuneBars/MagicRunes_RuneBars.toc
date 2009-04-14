@@ -1,4 +1,4 @@
-## Interface: 30000
+## Interface: 30100
 ## Title: Magic Runes: Rune Bars [beta version]
 ## Notes: An new rune bar display for Magic Runes - Still IN DEVELOPMENT
 ## Author: NeoTron
