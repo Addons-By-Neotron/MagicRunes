@@ -7,7 +7,6 @@
 ## X-Category: Combat
 ## X-eMail: neotron@gmail.com
 ## LoadManagers: AddonLoader
-## SavedVariables: MagicRunesDB
 ## RequiredDeps: MagicRunes
 ## X-LoadOn-Class: DEATHKNIGHT
 
