@@ -811,7 +811,7 @@ do
 	 local info
 	 for id = 1,40 do
 	    local name, _, _, _,_,  duration, expirationTime, isMine = UnitAura(unit, id, filter)
-	    if name and isMine then
+	    if name and isMine == "player" then
 	       info = mod.spellCache[name]
 	       if info then
 		  data = spellInfo[info.shortname]
