@@ -235,9 +235,11 @@ function mod:OnInitialize()
    mod:UpdateLocalVariables()
 
    -- spells
-   CacheSpellInfo("BLOODPLAGUE",  55078)
-   CacheSpellInfo("FROSTFEVER",   55095)
-   CacheSpellInfo("UNHOLYBLIGHT", 51379)
+CacheSpellInfo("BLOODPLAGUE", 59879)
+CacheSpellInfo("FROSTFEVER", 59921)
+
+--CacheSpellInfo("BLOODPLAGUE",  55078)
+--   CacheSpellInfo("FROSTFEVER",   55095)
 
    -- bar types
    mod.RUNIC_BAR = 1
@@ -491,10 +493,6 @@ do
       BLOODPLAGUE = {},
       FROSTFEVER = {},
    }
-   local playerBuffInfo = {
-      UNHOLYBLIGHT = {}
-   }
-
    
    function mod:UpdateRemainingTimes()
       if db.flashTimes and db.flashMode == 2 then
@@ -656,7 +654,7 @@ do
 	    elseif barData.type == mod.DOT_BAR or barData.type == mod.RUNE_BAR then
 	       local isRuneBar
 	       if barData.type == mod.DOT_BAR then
-		  data = targetSpellInfo[barData.spell] or playerBuffInfo[barData.spell]
+		  data = targetSpellInfo[barData.spell] 
 	       else
 		  isRuneBar = true
 		  data = runeData[barData.runeid]
@@ -740,7 +738,6 @@ do
       
       -- this updates the remaining and current value of the dots/buffs
       UpdateBuffDurations(targetSpellInfo)
-      UpdateBuffDurations(playerBuffInfo)
 
       -- Do the "rune is ready" flashing      
       if db.readyFlash and #readyFlash > 0 then
@@ -764,7 +761,7 @@ do
       -- Execute the update method in each module
       for name, module in pairs(mod.modules) do
 	 if module.OnUpdate then
-	    module:OnUpdate(t or 0, runeData, targetSpellInfo, playerBuffInfo)
+	    module:OnUpdate(t or 0, runeData, targetSpellInfo)
 	 end
       end
 
@@ -795,9 +792,6 @@ do
       if unit == "target" then
 	 spellInfo = targetSpellInfo
 	 filter = "HARMFUL"
-      elseif unit == "player" then
-	 spellInfo = playerBuffInfo
-	 filter = "HELPFUL"
       else
 	 return
       end
