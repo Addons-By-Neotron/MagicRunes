@@ -28,7 +28,6 @@ local defaultColors = {
    Runic =  { [1] = 0.2, [2] = 0.7, [3] = 1,   [4] = 1 },
    BLOODPLAGUE = { [1] = 0,   [2] = 0.7, [3] = 0,   [4] = 1 },
    FROSTFEVER  = { [1] = 0,   [2] = 0.5, [3] = 1,   [4] = 1 },
-   UNHOLYBLIGHT  = { [1] = 1,   [2] = 0,   [3] = 0,   [4] = 1 },
    Background = { [1] = 0.3, [2] = 0,3, [3] = 0.3, [4] = 0.5 },
 }
 
@@ -187,13 +186,6 @@ local options = {
 	    type = "color",
 	    name = function() return mod.spellCache.FROSTFEVER.name end,
 	    desc = L["Color used for the Frost Fever bar."],
-	    hasAlpha = true,
-	    order = 5,
-	 },
-	 UNHOLYBLIGHT = {
-	    type = "color",
-	    name = function() return mod.spellCache.UNHOLYBLIGHT.name end,
-	    desc = L["Color used for the Unholy Blight bar."],
 	    hasAlpha = true,
 	    order = 5,
 	 },
@@ -885,8 +877,8 @@ function mod:SetDefaultBars()
       -- make sure we got the dot bars
       bars[8] =  { type = mod.DOT_BAR, title = mod.spellCache.BLOODPLAGUE.name, shorttitle = "BP", spell = "BLOODPLAGUE" } 
       bars[9] =  { type = mod.DOT_BAR, title = mod.spellCache.FROSTFEVER.name, shorttitle = "FF", spell = "FROSTFEVER" }
-      bars[10] = { type = mod.DOT_BAR, title = mod.spellCache.UNHOLYBLIGHT.name, shorttitle = "UB", spell = "UNHOLYBLIGHT" }
    end
+   bars[10] = nil -- no longer need unholy blight
    mod:SetupBarOptions(true)
 end
 

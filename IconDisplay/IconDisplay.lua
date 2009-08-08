@@ -281,7 +281,7 @@ do
 	 inset = inset + module.db.edgeSize / 4
       end
       for id  = 1, 6 do
-	 local angle = db[idToAngle[id]]*degreeToRadian
+	 local angle = module.db[idToAngle[id]]*degreeToRadian
 	 local x = mx * cos(angle)
 	 local y = my * sin(angle)
 	 if x < minx then minx = x end
