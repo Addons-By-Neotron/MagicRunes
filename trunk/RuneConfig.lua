@@ -873,7 +873,7 @@ function mod:SetDefaultBars()
       -- make sure we got the runic bar
       bars[7] = { type = mod.RUNIC_BAR, title = L["Runic"], shorttitle = "R" }
    end
-   if not bars[10] then
+   if not bars[9] then
       -- make sure we got the dot bars
       bars[8] =  { type = mod.DOT_BAR, title = mod.spellCache.BLOODPLAGUE.name, shorttitle = "BP", spell = "BLOODPLAGUE" } 
       bars[9] =  { type = mod.DOT_BAR, title = mod.spellCache.FROSTFEVER.name, shorttitle = "FF", spell = "FROSTFEVER" }
