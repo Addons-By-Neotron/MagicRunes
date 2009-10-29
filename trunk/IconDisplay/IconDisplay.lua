@@ -176,7 +176,6 @@ end
 function module:OnEnable()
    -- Skin setup
    if LBF then
-      mod:Print("ENABLING LBF SUPPORT")
       local lbfGroup = LBF:Group("MagicRunes", "Icon Display")
       lbfGroup.SkinID = module.db.skinId or "Zoomed"
       lbfGroup.Backdrop = module.db.backdrop
@@ -187,7 +186,6 @@ function module:OnEnable()
 	 lbfGroup:AddButton(icons[i])
       end
    end
-
    module:SetupOptions()
    module:ApplyProfile()
 end
