@@ -19,7 +19,6 @@ along with Magic Runes.  If not, see <http://www.gnu.org/licenses/>.
 
 **********************************************************************
 ]]
-
 if not MagicRunes then return end -- not a DK
 
 
@@ -32,9 +31,9 @@ local media = LibStub("LibSharedMedia-3.0")
 local pdb, db
 
 local debug
---@debug@
+--[===[@debug@
 debug = true
---@end-debug@
+--@end-debug@]===]
 if debug then
    MRB = module
 end
@@ -103,6 +102,7 @@ function module:OnEnable()
    module.options.args.backgroundFrame.hidden = "IsDisabled"
    module.options.args.barsize.hidden = "IsDisabled"
    mod:OptReg("Rune Bars", module.options, L["Rune Bars"])
+   module:ApplyProfile()
 end
 
 function module:OnDisable()
