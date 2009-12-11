@@ -1,4 +1,4 @@
-## Interface: 30200
+## Interface: 30300
 ## Title: Magic Runes: Icon Display
 ## Notes: An icon only rune display for Magic Runes
 ## Author: NeoTron
