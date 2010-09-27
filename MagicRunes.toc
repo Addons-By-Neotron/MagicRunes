@@ -1,4 +1,5 @@
 ## Interface: 30300
+## X-Compatible-With: 40000
 ## Title: Magic Runes
 ## Notes: Deathknight Rune Display
 ## Author: NeoTron

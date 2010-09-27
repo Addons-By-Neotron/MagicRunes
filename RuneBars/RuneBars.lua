@@ -130,7 +130,7 @@ do
 		  mod:AddReadyFlash(f)
 	       end
 	    end
-	    f.bar:SetValue(data.value, 10)
+	    f.bar:SetValue(data.value, data.duration)
 	    -- Handle death runes changes
 	    if f.type ~= data.type then
 	       f.type = data.type
