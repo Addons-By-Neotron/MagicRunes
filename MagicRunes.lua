@@ -455,7 +455,7 @@ end
 
 function mod:UpdateBarIcons()
    for id,data in pairs(db.bars) do
-      if data.type == mod.RUNE_BAR then
+      if data.type == mod.RUNE_BAR and runebars[id] then
 	 runebars[id]:SetIcon(mod:GetRuneIcon(GetRuneType(data.runeid)))
       end
    end
