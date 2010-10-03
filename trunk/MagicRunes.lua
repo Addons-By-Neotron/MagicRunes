@@ -235,12 +235,9 @@ function mod:OnInitialize()
    mod:UpdateLocalVariables()
 
    -- spells
-CacheSpellInfo("BLOODPLAGUE", 59879)
-CacheSpellInfo("FROSTFEVER", 59921)
-
---CacheSpellInfo("BLOODPLAGUE",  55078)
---   CacheSpellInfo("FROSTFEVER",   55095)
-
+   CacheSpellInfo("BLOODPLAGUE", 59879)
+   CacheSpellInfo("FROSTFEVER", 59921)
+   
    -- bar types
    mod.RUNIC_BAR = 1
    mod.RUNE_BAR  = 2
