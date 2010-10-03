@@ -1,4 +1,4 @@
---[[
+ --[[
 **********************************************************************
 Magic Runes RuneBars - Death Knight rune cooldown displaye
 **********************************************************************
@@ -30,14 +30,7 @@ local LBF = LibStub("LibButtonFacade", true)
 local media = LibStub("LibSharedMedia-3.0")
 local pdb, db
 
-local debug
---[===[@debug@
-debug = true
---@end-debug@]===]
-if debug then
-   MRB = module
-end
-
+MRB = module
 
 local defaults = {
    -- Background frame
@@ -70,7 +63,6 @@ function module:OnInitialize()
       module:CreateBar()
    end
    module:SetSize()
-   module:SortBars()
 end
 
 function module:SkinChanged(skinId, gloss, backdrop, group, button, colors)
@@ -86,7 +78,6 @@ end
 function module:OnEnable()
    if LBF then
       local lbfGroup = LBF:Group("MagicRunes", "Rune Bars")
-
       lbfGroup.SkinID = db.skinId or "Zoomed"
       lbfGroup.Backdrop = db.backdrop
       lbfGroup.Gloss = db.gloss
@@ -178,8 +169,6 @@ function module:CreateFrame()
    handle:SetScript("OnDragStart", module.OnDragStart)
    handle:SetScript("OnDragStop", module.OnDragStop)
 
-   module:SetHandlePoints()
-
    handle.label = handle:CreateFontString(nil, "OVERLAY", "ChatFontNormal")
    handle.label:SetAllPoints()
    handle.label:SetText("Rune Bars")
@@ -197,7 +186,6 @@ function module:CreateFrame()
 
    c = db.backdropColors.borderColor
    handle:SetBackdropBorderColor(c[1], c[2], c[3], c[4] > 0.2 and c[4] or 0.7)
-   module:SetHandleFont()
 end
 
 function module:CreateBar()
@@ -332,7 +320,9 @@ end
 
 function module:ApplyProfile()
    if not module.frame then return end
-   module:SetupDefaultOptions()
+   module.handle:SetScale(db.scale)
+   module.frame:SetScale(db.scale)
+   module:SetSize()
    module:SetHandleFont()
    module:SetHandlePoints()
    module:FixBackdrop()
@@ -361,7 +351,7 @@ end
 
 function module:IsDisabled() return not db.enabled end
 
-function module:LoadPosition(bin)
+function module:LoadPosition()
    local posx = db.posx 
    local posy = db.posy
    local anchor = db.anchor
@@ -369,7 +359,6 @@ function module:LoadPosition(bin)
    if not anchor then anchor = "TOPLEFT" end
 
    local s = module.frame:GetEffectiveScale()
-
    if posx and posy then
       module.frame:SetPoint(anchor, posx/s, posy/s)
    else
