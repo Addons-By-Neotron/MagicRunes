@@ -32,6 +32,16 @@ local pdb, db
 
 MRB = module
 
+local runeOrder = {
+   { 1, 2, 3, 4, 5, 6}, -- BBUUFF
+   { 1, 3, 5, 2, 4, 6}, -- BUFBUF
+   { 1, 2, 5, 6, 3, 4}, -- BBFFUU
+   { 1, 2, 5, 3, 6, 4}, -- BBFUFU
+   { 5, 3, 6, 4, 1, 2}, -- FUFUBB
+   { 1, 5, 3, 4, 6, 2}, -- BFUUFB
+   { 1, 3, 5, 6, 4, 2}, -- BUFFUB
+}
+
 local defaults = {
    -- Background frame
    backdropColors = {
@@ -44,15 +54,102 @@ local defaults = {
    inset = 4,
    padding = 2,
 
-   spacing = 0, 
+   vertSpacing = 1,
+   horizSpacing = 1,
    scale = 1.0, 
    width = 200,
    height = 20,
 
+   runeOrder = 1,
+   columns = 1,
+   showicons = true,
+   
    fontsize = 12,
    font = "Friz Quadrata TT",
 
+   preset = 1, 
+   
    enabled = false
+}
+
+local presets = {
+   [2] = { -- normal bars, up to down
+      edgeSize = 16,
+      inset = 4,
+      padding = 2,
+      
+      vertSpacing = 0,
+      horizSpacing = 0,
+      columns = 1,
+      scale = 1.0,
+      width = 200,
+      height = 20,
+      showicons = true, 
+      runeOrder = 1,
+   },
+   [3] = { -- minibars, horizontal
+      edgeSize = 1,
+      inset = 1,
+      padding = 1.5,
+
+      horizSpacing = 1,
+      vertSpacing = 1,
+      
+      scale = 1.0,
+      width = 30,
+      height = 10,
+      columns = 6, 
+      runeOrder = 1,
+      
+      showicons = false, 
+   },
+   [4] = { -- minibars vertical
+      edgeSize = 1,
+      inset = 1,
+      padding = 1.5,
+
+      horizSpacing = 1,
+      vertSpacing = 1,
+      
+      scale = 1.0,
+      width = 38,
+      height = 10,
+      columns = 1, 
+      runeOrder = 1,
+      
+      showicons = true, 
+   },
+   [5] = { -- minibars 2x3
+      edgeSize = 1,
+      inset = 1,
+      padding = 1.5,
+
+      horizSpacing = 1,
+      vertSpacing = 1,
+      
+      scale = 1.0,
+      width = 30,
+      height = 10,
+      columns = 2,
+      runeOrder = 1,
+      
+      showicons = false, 
+   }, 
+   [6] = { -- minibars 3x2
+      edgeSize = 1,
+      inset = 1,
+      padding = 1.5,
+
+      horizSpacing = 1,
+      vertSpacing = 1,
+      
+      scale = 1.0,
+      width = 30,
+      height = 10,
+      columns = 3,
+      runeOrder = 2,
+      showicons = false,
+   }
 }
 
 function module:OnInitialize()
@@ -92,7 +189,7 @@ function module:OnEnable()
    module.options.args.barsize         = module:GetConfigTemplate("barsize")
    module.options.args.backgroundFrame.hidden = "IsDisabled"
    module.options.args.barsize.hidden = "IsDisabled"
-   mod:OptReg("Rune Bars", module.options, L["Rune Bars"])
+   mod:OptReg("Rune Bars", module.options, L["Rune Bars"], nil, true)
    module:ApplyProfile()
 end
 
@@ -131,6 +228,16 @@ do
 	 end
       end
    end
+end
+
+function module:LoadPreset(presetId)
+   local preset = presets[presetId]
+   if not preset then return end
+   print("Preset"..presetId);
+   for key,value in pairs(preset) do
+      db[key] = value
+   end
+   module:ApplyProfile()
 end
 
 function module:OnDragStart()
@@ -241,16 +348,73 @@ function module:SetBarColor(frame, color)
    end
 end
 
+function module:ShowHideIcon(frame)
+   if db.showicons then
+      frame.icon:Show()
+      frame.iconbutton:Show()
+      frame:SetWidth(db.width + db.height + 4)
+   else
+      frame.icon:Hide()
+      frame.iconbutton:Hide()
+      frame:SetWidth(db.width)
+   end
+end
 
-function module:SortBars()
+function module:LayoutBars()
+   local anchor, xmulti, ymulti, otheranchor
+   local count = 1
+   
+   inset = db.inset
+
+   if module.db.flipy then
+      anchor = "BOTTOM"
+      ymulti = 1
+   else
+      anchor = "TOP"
+      ymulti = -1
+   end
+   
+   if module.db.flipx then
+      anchor = anchor .. "RIGHT"
+      xmulti = -1 
+   else
+      anchor = anchor .. "LEFT"
+      xmulti = 1
+   end
+   -- fixed me
+   
+   local height = db.padding
+   local xoffset = db.padding
+   local hpadding = (db.width + (db.showicons and (db.height+4) or 0) + (db.horizSpacing or 0)) 
+   local vpadding = (db.height + (db.vertSpacing or 0))
+   
+   for _,id in ipairs(runeOrder[db.runeOrder]) do
+      local frame = module.bars[id]
+      module:ShowHideIcon(frame)
+      if count > db.columns then
+	 xoffset = db.padding
+	 count = 1
+	 height = height + vpadding
+      end
+
+      frame:ClearAllPoints()
+      frame:SetPoint(anchor, module.frame, anchor, xmulti*xoffset, ymulti*height)
+      count = count + 1
+      xoffset = xoffset + hpadding
+   end
+   module.frame:SetHeight(inset*2 + ceil(6/db.columns)*vpadding-db.vertSpacing)
+   module.frame:SetWidth(inset*2 + db.columns*hpadding - db.horizSpacing)
+end
+   
+
+function module:SortBarsVertically()
    local w, h = 0,0
    local anchor
-   --   tsort(mod.bars, function(f1, f2) local a, b = (f1.bar.value/f1.bar.maxValue),  (f2.bar.value/f2.bar.maxValue) if a == b then return f1.guid > f2.guid else return a > b end end)
    local start = 0
    for id, frame in pairs(module.bars) do
+      module:ShowHideIcon(frame)      
       local fw, fh = frame:GetWidth(), frame:GetHeight()
       frame:ClearAllPoints()
-
       if fw > w then w = fw end
       h = h + fh + db.spacing
       
@@ -274,12 +438,46 @@ function module:SortBars()
       anchor = frame
       frame:Show()
    end
+   return w, h
+end   
 
+function module:SortBarsHorizontally()
+   local w, h = 0,0
+   local anchor
+   local start = 0
+   for id, frame in pairs(module.bars) do
+      module:ShowHideIcon(frame)
+      local fw, fh = frame:GetWidth(), frame:GetHeight()
+      frame:ClearAllPoints()
+      if fh > h then h = fh end
+      w = w + fw + db.spacing
+      
+      if anchor then
+	 frame:SetPoint("TOPLEFT", anchor, "TOPRIGHT", db.spacing, 0)
+	 frame:SetPoint("BOTTOMLEFT", anchor, "BOTTOMRIGHT", db.spacing, 0)
+      else
+	 frame:SetPoint("TOPLEFT", module.frame, "TOPLEFT", db.padding, db.padding)
+	 frame:SetPoint("BOTTOMLEFT", module.frame, "BOTTOMLEFT", db.padding, -db.padding)
+      end
+      anchor = frame
+      frame:Show()
+   end
+   return w, h
+end
+
+function module:SortBars()
+   module:LayoutBars();
+   if true then return end
+   local w, h
+   if db.runeorder == 1 then
+      w, h = module:SortBarsVertically()
+   elseif db.runeorder == 2 then
+      w, h = module:SortBarsHorizontally()
+   end
    local p2 = db.padding*2
-   w = w+p2
-   db.lastWidth = w
-   module.frame:SetWidth(w)
+   module.frame:SetWidth(w+p2)
    module.frame:SetHeight(h+p2)
+
 end
 
 
@@ -370,16 +568,23 @@ function module:SetupDefaultOptions()
    db = mod.db.profile.runebars or {}
    for key, val in pairs(defaults) do
       if db[key] == nil then
-	 db[key] = val
+	 if db.spacing and (key == "horizSpacing" or key == "vertSpacing") then
+	    db[key] = db.spacing
+	 else
+	    db[key] = val
+	 end
       end
    end
+   db.spacing = nil
    mod.db.profile.runebars = db
    pdb = mod.db.profile
    module.db = db
 end
 
 function module:OnOptionChanged(var, val)
-   if var == "maxbars"  or var == "spacing" or var == "padding" then
+   if var == "maxbars"  or var == "horizSpacing" or var == "vertSpacing"
+      or var == "padding" or var == "runeOrder" or var == "showicons" or var == "columns"
+   then
       module:SortBars()
    elseif var == "height" or var == "width" then
       module:SetSize()
@@ -389,6 +594,9 @@ function module:OnOptionChanged(var, val)
       module:LoadPosition()
    elseif var == "enabled" then
       module:EnableToggled()
+   elseif var == "preset" then
+      module:LoadPreset(val)
+      db[var] = 1
    end
 end
 
@@ -406,9 +614,8 @@ function module:SetSize()
    for _, frame in ipairs(module.bars) do
       frame.bar:SetLength(db.width)
       frame.bar:SetThickness(db.height)
-      frame:SetWidth(db.width+db.height+4)
       frame:SetHeight(db.height)
-
+      module:ShowHideIcon(frame)
       frame.iconbutton:SetScale(db.height/frame.iconbutton:GetWidth())
       
    end
@@ -417,7 +624,7 @@ end
 
 module.options = {
    type = "group",
-   name = L["Rune Bars"],
+   name = L["Magic Runes"].." - "..L["Rune Bars"],
    handler = module,
    get = "_GetOption",
    set = "_SetOption",
@@ -428,9 +635,75 @@ module.options = {
 	 name = L["Enable Rune Bars"], 
 	 order = 1,
       },
+      preset = {
+	 type = "select",
+	 name = L["Load preset"],
+	 hidden = "IsDisabled", 
+	 values = {
+	    L["Select preset to load..."],
+	    L["Standard bars"],
+	    L["Minimal horizontal layout"], 
+	    L["Minimal vertical layout"], 
+	    L["Minimal 2x3 layout"], 
+	    L["Minimal 3x2 layout"], 
+	 },
+	 width = "full", 
+	 order = 2, 
+      }, 
+      layout = {
+	 type = "group",
+	 name = L["Layout"],
+	 order = 10,
+	 hidden = "IsDisabled", 
+	 args = {
+	    showicons = {
+	       type = "toggle",
+	       name = L["Show Rune Icons"],
+	       order = 200
+	    },
+	    runeOrder = {
+	       type = "select",
+	       name = L["Rune Order"],
+	       values = {
+		  "BBUUFF",
+		  "BUFBUF",
+		  "BBFFUU",
+		  "BBFUFU",
+		  "FUFUBB",
+		  "BFUUFB",
+		  "BUFFUB", 
+	       },
+	       order = 30
+	    },
+	    vertSpacing = {
+	       type = "range",
+	       name = L["Vertical Spacing"],
+	       width = "full",
+	       min = 0, max = 60, step = 0.01,
+	       order = 4,
+	    }, 
+	    horizSpacing = {
+	       type = "range",
+	       name = L["Horizontal Spacing"],
+	       width = "full",
+	       min = 0, max = 60, step = 0.01,
+	       order = 4,
+	    }, 
+	    columns = {
+	       type = "range",
+	       name = L["Columns"],
+	       width="full",
+	       desc = L["Number of columns per row."],
+	       min = 1, max = 6, step = 1,
+	       order = 4,
+	    },
+
+	 }
+      },
       help = {
 	 type = "group",
 	 name = L["Documentation"],
+	 order = 1000,
 	 args = {
 	    intro = {
 	       type = "group",

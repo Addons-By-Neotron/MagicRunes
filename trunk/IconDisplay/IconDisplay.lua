@@ -434,7 +434,7 @@ function module:SetupOptions()
       min = 0, max = 1, step = 0.01,
       order = 75,
    }, 
-   mod:OptReg("Icon Display", module.options, L["Icon Display"]) -- fixme: module config
+   mod:OptReg("Icon Display", module.options, L["Icon Display"], nil, true)
 end
 
 function module:OnOptionChanged(var, val)
@@ -500,7 +500,7 @@ end
 
 module.options = {
    type = "group",
-   name = L["Icon Display"],
+   name = L["Magic Runes"].." - "..L["Icon Display"],
    handler = module,
    get = "_GetOption",
    set = "_SetOption",
