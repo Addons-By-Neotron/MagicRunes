@@ -606,13 +606,17 @@ end
 
 do
    local configPanes = {}
-   function mod:OptReg(optname, tbl, dispname, cmd)
+   function mod:OptReg(optname, tbl, dispname, cmd, ownSection)
       local regtable
       if dispname then
-	 optname = "Magic Runes"..optname
+	 optname = "Magic Runes "..optname
 	 AC:RegisterOptionsTable(optname, tbl, cmd)
 	 if not cmd then
-	    regtable = ACD:AddToBlizOptions(optname, dispname, L["Magic Runes"])
+	    if ownSection then
+	       regtable = ACD:AddToBlizOptions(optname, L["Magic Runes"].." "..dispname)
+	    else
+	       regtable = ACD:AddToBlizOptions(optname, dispname, L["Magic Runes"])
+	    end
 	 end
       else
 	 AC:RegisterOptionsTable(optname, tbl, cmd)
