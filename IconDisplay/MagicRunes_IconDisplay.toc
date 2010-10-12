@@ -1,4 +1,4 @@
-## Interface: 30300
+## Interface: 40000
 ## X-Compatible-With: 40000
 ## Title: Magic Runes: Icon Display
 ## Notes: An icon only rune display for Magic Runes
