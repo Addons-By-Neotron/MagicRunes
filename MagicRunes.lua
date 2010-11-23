@@ -213,6 +213,8 @@ function mod:GetRuneInfo(runeid, set)
 end
 
 function mod:OnInitialize()
+   mod:RegisterEvent("PLAYER_ENTERING_WORLD", "HandleBlizzardRuneFrameEvent")
+
    -- Register some sound effects since they normally aren't available
    media:Register("sound", "Drop", [[Sound\Interface\DropOnGround.wav]])
    media:Register("sound", "Error", [[Sound\Interface\Error.wav]])
@@ -364,6 +366,7 @@ function mod:OnEnable()
    if self.SetLogLevel then
       mod:SetLogLevel(self.logLevels.TRACE)
    end
+   mod:RegisterEvent("UNIT_EXITED_VEHICLE", "HandleBlizzardRuneFrameEvent")
    mod:RegisterEvent("RUNE_POWER_UPDATE")
    mod:RegisterEvent("RUNE_TYPE_UPDATE")
    mod:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -464,17 +467,7 @@ function mod:UpdateBarIcons()
 end
 
 function mod:OnDisable()
-   mod:UnregisterEvent("RUNE_POWER_UPDATE")
-   mod:UnregisterEvent("RUNE_TYPE_UPDATE")
-   mod:UnregisterEvent("UNIT_MAXRUNIC_POWER")
-   mod:UnregisterEvent("UNIT_RUNIC_POWER")
-   mod:UnregisterEvent("PLAYER_REGEN_ENABLED")
-   mod:UnregisterEvent("PLAYER_REGEN_DISABLED")
-   mod:UnregisterEvent("PLAYER_UNGHOST")
-   mod:UnregisterEvent("PLAYER_DEAD")
-   mod:UnregisterEvent("PLAYER_ALIVE")
-   mod:UnregisterEvent("PLAYER_TARGET_CHANGED")
-   mod:UnregisterEvent("UNIT_AURA")
+   mod:UnregisterAllEvents()
 end
 
 do
@@ -950,7 +943,6 @@ local varChanges = {
 }
 
 function mod:ApplyProfile()
-   mod:HandleBlizzardRuneFrame()
 
    -- configure based on saved data
    for from,to in pairs(varChanges) do
@@ -989,6 +981,8 @@ function mod:ApplyProfile()
 	 module:ApplyProfile()
       end
    end
+
+   mod:HandleBlizzardRuneFrame()
 end
 
 function mod:OnProfileChanged(event, newdb)
@@ -1040,14 +1034,24 @@ function mod:SetGlobalOption(info, val)
    mod.UpdateBars()
 end
 
+function mod:HandleBlizzardRuneFrameEvent(event, arg1)
+   if event == "UNIT_EXITED_VEHICLE" and arg1 ~= "player" then
+      return
+   end
+   mod:HandleBlizzardRuneFrame()
+end
+
 function mod:HandleBlizzardRuneFrame(info,val)
    if info then
       db[info[#info]] = val
    end
    if RuneFrame then
+      local visible = RuneFrame:IsVisible()
       if db.hideBlizzardFrame then
-	 RuneFrame:Hide()
-      else
+	 if visible then
+	    RuneFrame:Hide()
+	 end
+      elseif not visible then
 	 RuneFrame:Show()
       end
    end
