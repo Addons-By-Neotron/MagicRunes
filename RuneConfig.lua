@@ -21,14 +21,16 @@ local media = LibStub("LibSharedMedia-3.0")
 local db, bars, runebars
 
 local defaultColors = {
-   Blood  = { [1] = 1,   [2] = 0,    [3] = 0,   [4] = 1 },
-   Unholy = { [1] = 0,   [2] = 0.7,  [3] = 0,   [4] = 1 },
-   Frost  = { [1] = 0,   [2] = 0.5,  [3] = 1,   [4] = 1 },
-   Death  = { [1] = 0.8, [2] = 0,    [3] = 0.9, [4] = 1 },
-   Runic =  { [1] = 0,   [2] = 0.82, [3] = 1,   [4] = 1 },
-   BLOODPLAGUE = { [1] = 0,   [2] = 0.7, [3] = 0,   [4] = 1 },
-   FROSTFEVER  = { [1] = 0,   [2] = 0.5, [3] = 1,   [4] = 1 },
-   Background = { [1] = 0.3, [2] = 0,3, [3] = 0.3, [4] = 0.5 },
+   Blood         = { [1] = 1,   [2] = 0,    [3] = 0,     [4] = 1 },
+   Unholy        = { [1] = 0,   [2] = 0.7,  [3] = 0,     [4] = 1 },
+   Frost         = { [1] = 0,   [2] = 0.5,  [3] = 1,     [4] = 1 },
+   Death         = { [1] = 0.8, [2] = 0,    [3] = 0.9,   [4] = 1 },
+   Runic         = { [1] = 0,   [2] = 0.82, [3] = 1,     [4] = 1 },
+   BLOODPLAGUE   = { [1] = 0,   [2] = 0.7,  [3] = 0,     [4] = 1 },
+   FROSTFEVER    = { [1] = 0,   [2] = 0.5,  [3] = 1,     [4] = 1 },
+   SCARLETFEVER  = { [1] = 1,   [2] = 0.35, [3] = 0.3,   [4] = 1 },
+   UNHOLYBLIGHT  = { [1] = 0.55,[2] = 0.57, [3] = 0.517, [4] = 1 },
+   Background    = { [1] = 0.3, [2] = 0,3,  [3] = 0.3,   [4] = 0.5 },
 }
 
 local runeValues = {
@@ -186,6 +188,20 @@ local options = {
 	    type = "color",
 	    name = function() return mod.spellCache.FROSTFEVER.name end,
 	    desc = L["Color used for the Frost Fever bar."],
+	    hasAlpha = true,
+	    order = 5,
+	 },
+	 SCARLETFEVER = {
+	    type = "color",
+	    name = function() return mod.spellCache.SCARLETFEVER.name end,
+	    desc = L["Color used for the Scarlet Fever bar."],
+	    hasAlpha = true,
+	    order = 5,
+	 },
+	 UNHOLYBLIGHT = {
+	    type = "color",
+	    name = function() return mod.spellCache.UNHOLYBLIGHT.name end,
+	    desc = L["Color used for the Unholy Blight bar."],
 	    hasAlpha = true,
 	    order = 5,
 	 },
@@ -812,6 +828,11 @@ function mod:SetDefaultColors()
    if not db.colors then
       db.colors = defaultColors
    else
+      -- We just re-added this with a new default color
+      if not db.colors.SCARLETFEVER then
+	 db.colors.UNHOLYBLIGHT = nil
+      end
+      
       for color, val in pairs(defaultColors) do
 	 if not db.colors[color] then
 	    db.colors[color] = val
@@ -877,12 +898,19 @@ function mod:SetDefaultBars()
       -- make sure we got the runic bar
       bars[7] = { type = mod.RUNIC_BAR, title = L["Runic"], shorttitle = "R" }
    end
+
    if not bars[9] then
       -- make sure we got the dot bars
       bars[8] =  { type = mod.DOT_BAR, title = mod.spellCache.BLOODPLAGUE.name, shorttitle = "BP", spell = "BLOODPLAGUE" } 
       bars[9] =  { type = mod.DOT_BAR, title = mod.spellCache.FROSTFEVER.name, shorttitle = "FF", spell = "FROSTFEVER" }
    end
-   bars[10] = nil -- no longer need unholy blight
+
+   if not bars[11] then
+      -- Adding Scarlet Fever and Unholy Blight
+      bars[10] =  { type = mod.DOT_BAR, title = mod.spellCache.UNHOLYBLIGHT.name, shorttitle = "UB", spell = "UNHOLYBLIGHT", hide = true }
+      bars[11] =  { type = mod.DOT_BAR, title = mod.spellCache.SCARLETFEVER.name, shorttitle = "SF", spell = "SCARLETFEVER" } 
+   end
+
    mod:SetupBarOptions(true)
 end
 
