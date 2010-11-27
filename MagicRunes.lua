@@ -399,6 +399,8 @@ function mod:ReleaseBar(bar)
    bar:SetScale(1)
    bar.spark:SetAlpha(1)
    bar.ownerGroup:RemoveBar(bar.name)
+   bar.label:SetTextColor(1, 1, 1, 1)
+   bar.timerLabel:SetTextColor(1, 1, 1, 1)
 end
 
 function mod:CreateBars()
@@ -494,7 +496,7 @@ do
       end
       for id,barData in ipairs(db.bars) do
 	 bar = runebars[id]
-	 if barData.type ~= mod.RUNIC_BAR then
+	 if bar and barData.type ~= mod.RUNIC_BAR then
 	    data = runeData[barData.runeid]
 	    if data.remaining <= 0 then
 	       if db.showRemaining then
