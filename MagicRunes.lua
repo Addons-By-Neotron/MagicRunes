@@ -474,7 +474,7 @@ do
    local numActiveRunes = 0
    local activeRunes = {}
    local now, updated, data, bar, playAlert, tmp, newValue
-   local numActiveDots, scriptActive, resort, currentRunicPower
+   local numActiveDots, scriptActive, resort, currentRunicPower, currentMaxRunicPower
 
    local runeData = { {}, {}, {}, {}, {}, {} }
    local runeAlphaLevels = { 1, 1, 1, 1, 1, 1 }
@@ -630,8 +630,10 @@ do
 	 bar = runebars[id]
 	 if bar then
 	    if barData.type == mod.RUNIC_BAR then
-	       if bar.value ~= currentRunicPower then
-		  bar:SetValue(currentRunicPower)
+	       if bar.value ~= currentRunicPower or
+		  bar.maxValue ~= currentMaxRunicPower then
+		  bar.value = currentRunicPower
+		  bar:SetMaxValue(currentMaxRunicPower)
 		  if db.showTimer then
 		     bar.timerLabel:SetText(tostring(currentRunicPower))
 		  end
@@ -719,6 +721,7 @@ do
    
    function mod.UpdateBars(self, t)
       currentRunicPower = UnitPower("player")
+      currentMaxRunicPower = UnitPowerMax("player")
       resort, playAlert = nil, nil
       numActiveDots = 0
       now = GetTime()
