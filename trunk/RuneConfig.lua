@@ -21,16 +21,18 @@ local media = LibStub("LibSharedMedia-3.0")
 local db, bars, runebars
 
 local defaultColors = {
-   Blood         = { [1] = 1,   [2] = 0,    [3] = 0,     [4] = 1 },
-   Unholy        = { [1] = 0,   [2] = 0.7,  [3] = 0,     [4] = 1 },
-   Frost         = { [1] = 0,   [2] = 0.5,  [3] = 1,     [4] = 1 },
-   Death         = { [1] = 0.8, [2] = 0,    [3] = 0.9,   [4] = 1 },
-   Runic         = { [1] = 0,   [2] = 0.82, [3] = 1,     [4] = 1 },
-   BLOODPLAGUE   = { [1] = 0,   [2] = 0.7,  [3] = 0,     [4] = 1 },
-   FROSTFEVER    = { [1] = 0,   [2] = 0.5,  [3] = 1,     [4] = 1 },
-   SCARLETFEVER  = { [1] = 1,   [2] = 0.35, [3] = 0.3,   [4] = 1 },
-   UNHOLYBLIGHT  = { [1] = 0.55,[2] = 0.57, [3] = 0.517, [4] = 1 },
-   Background    = { [1] = 0.3, [2] = 0,3,  [3] = 0.3,   [4] = 0.5 },
+   Blood         = { 1,    0,    0,     1   },
+   Unholy        = { 0,    0.7,  0,     1   },
+   Frost         = { 0,    0.5,  1,     1   },
+   Death         = { 0.8,  0,    0.9,   1   },
+   Runic         = { 0,    0.82, 1,     1   },
+   BLOODPLAGUE   = { 0,    0.7,  0,     1   },
+   FROSTFEVER    = { 0,    0.5,  1,     1   },
+   SCARLETFEVER  = { 1,    0.35, 0.3,   1   },
+   UNHOLYBLIGHT  = { 0.55, 0.57, 0.517, 1   },
+   Background    = { 0.3,  0,3,  0.3,   0.5 },
+   Label         = { 1,    1,    1,     1   },
+   Timer         = { 1,    1,    1,     1   },
 }
 
 local runeValues = {
@@ -119,7 +121,6 @@ local options = {
 	    name = L["Load preset"],
 	    desc = L["Presets are primarily here to give you a few ideas on how you can configure the bars. Note that the presets do now change font, texture or color options. The global scale is also not changed."],
 	    values = "GetPresetList",
-	    width  = "full",
 	    order = 0,
 	    set = function(_, preset)
 		     if db.preset ~= preset then
@@ -204,6 +205,20 @@ local options = {
 	    desc = L["Color used for the Unholy Blight bar."],
 	    hasAlpha = true,
 	    order = 5,
+	 },
+	 Label = {
+	    type = "color",
+	    name = L["Label"],
+	    desc = L["Color used for the text label."],
+	    hasAlpha = true,
+	    order = 6,
+	 },
+	 Timer = {
+	    type = "color",
+	    name = L["Timer"],
+	    desc = L["Color used for the timer text."],
+	    hasAlpha = true,
+	    order = 6,
 	 },
 	 Background = {
 	    type = "color",
@@ -782,6 +797,8 @@ function mod:RefreshBarColors()
 	    mod:SetBarColor(bar, color)
 	 end
 	 bar:SetBackgroundColor(bg[1], bg[2], bg[3], bg[4])
+	 bar.label:SetTextColor(unpack(db.colors.Label))
+	 bar.timerLabel:SetTextColor(unpack(db.colors.Timer))
       end
    end
 end
@@ -797,25 +814,6 @@ end
 
 function mod:GetColorOpt(arg)
    return unpack(db.colors[arg[#arg]])
-end
-
-function mod:SetBarColorOpt(arg, r, g, b, a)
-   local barId = tonumber(arg[#arg-1])
-   local color = db.bars[barId].color or {}
-   color[1] = r
-   color[2] = g
-   color[3] = b
-   color[4] = a
-   db.bars[barId].color = color
-   mod:SetBarColor(runebars[barId], color)
-end
-
-function mod:GetBarColorOpt(arg)
-   local barId = tonumber(arg[#arg-1])
-   local color = db.bars[barId].color
-   if color then
-      return unpack(color)
-   end
 end
 
 function mod:SetReadyFlashOpt(info, val)
