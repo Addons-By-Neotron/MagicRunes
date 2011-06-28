@@ -1,5 +1,5 @@
-## Interface: 40100
-## X-Compatible-With: 40100
+## Interface: 40200
+## X-Compatible-With: 40200
 ## Title: Magic Runes: Icon Display
 ## Notes: An icon only rune display for Magic Runes
 ## Author: NeoTron
