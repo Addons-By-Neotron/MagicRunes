@@ -443,7 +443,13 @@ function mod:CreateBars()
 	    mod:UpdateRunicPower()
 	    mod:SetBarLabel(id, data)
 	    mod:SetBarColor(bar, db.colors.Runic)
-	    bar:SetIcon(media:Fetch("statusbar", "Empty"))
+	    local icon = media:Fetch("statusbar", "Empty")
+	    if icon then
+	       bar:SetIcon()
+	       bar:ShowIcon()
+	    else
+	       bar:HideIcon();
+	    end
 	 elseif data.type == mod.DOT_BAR then
 --	    mod:UpdateRunicPower()
 	    mod:SetBarLabel(id, data)
