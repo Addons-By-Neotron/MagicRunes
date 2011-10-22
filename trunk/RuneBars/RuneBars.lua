@@ -233,7 +233,6 @@ end
 function module:LoadPreset(presetId)
    local preset = presets[presetId]
    if not preset then return end
-   print("Preset"..presetId);
    for key,value in pairs(preset) do
       db[key] = value
    end
@@ -352,8 +351,7 @@ function module:ShowHideIcon(frame)
       frame.iconbutton:Show()
       frame:SetWidth(db.width + db.height + 4)
       local scale = db.height/frame.iconbutton:GetWidth()
-      print("scale = ", scale)
-      if scale > 0 then
+      if scale ~= 0 then
 	 frame.iconbutton:SetScale(scale)
       end
    else
