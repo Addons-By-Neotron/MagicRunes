@@ -325,9 +325,7 @@ function module:CreateBar()
 
    module:SetBarColor(frame, color)
    
-   iconbutton:SetPoint("RIGHT", frame.bar, "LEFT", -4)
-   iconbutton:SetPoint("LEFT", frame, "LEFT")
-
+   iconbutton:SetPoint("RIGHT", frame.bar, "LEFT", -4, 0)
 
    frame.overlayTexture =  frame.bar:CreateTexture(nil, "OVERLAY")
    frame.overlayTexture:SetTexture("Interface/Buttons/UI-Listbox-Highlight2")
@@ -353,6 +351,11 @@ function module:ShowHideIcon(frame)
       frame.icon:Show()
       frame.iconbutton:Show()
       frame:SetWidth(db.width + db.height + 4)
+      local scale = db.height/frame.iconbutton:GetWidth()
+      print("scale = ", scale)
+      if scale > 0 then
+	 frame.iconbutton:SetScale(scale)
+      end
    else
       frame.icon:Hide()
       frame.iconbutton:Hide()
@@ -615,9 +618,7 @@ function module:SetSize()
       frame.bar:SetLength(db.width)
       frame.bar:SetThickness(db.height)
       frame:SetHeight(db.height)
-      module:ShowHideIcon(frame)
-      frame.iconbutton:SetScale(db.height/frame.iconbutton:GetWidth())
-      
+      module:ShowHideIcon(frame)      
    end
    module:SortBars()
 end
