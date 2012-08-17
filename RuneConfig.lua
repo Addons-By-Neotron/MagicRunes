@@ -28,8 +28,6 @@ local defaultColors = {
    Runic         = { 0,    0.82, 1,     1   },
    BLOODPLAGUE   = { 0,    0.7,  0,     1   },
    FROSTFEVER    = { 0,    0.5,  1,     1   },
-   SCARLETFEVER  = { 1,    0.35, 0.3,   1   },
-   UNHOLYBLIGHT  = { 0.55, 0.57, 0.517, 1   },
    Background    = { 0.3,  0,3,  0.3,   0.5 },
    Label         = { 1,    1,    1,     1   },
    Timer         = { 1,    1,    1,     1   },
@@ -189,20 +187,6 @@ local options = {
 	    type = "color",
 	    name = function() return mod.spellCache.FROSTFEVER.name end,
 	    desc = L["Color used for the Frost Fever bar."],
-	    hasAlpha = true,
-	    order = 5,
-	 },
-	 SCARLETFEVER = {
-	    type = "color",
-	    name = function() return mod.spellCache.SCARLETFEVER.name end,
-	    desc = L["Color used for the Scarlet Fever bar."],
-	    hasAlpha = true,
-	    order = 5,
-	 },
-	 UNHOLYBLIGHT = {
-	    type = "color",
-	    name = function() return mod.spellCache.UNHOLYBLIGHT.name end,
-	    desc = L["Color used for the Unholy Blight bar."],
 	    hasAlpha = true,
 	    order = 5,
 	 },
@@ -827,7 +811,10 @@ function mod:SetDefaultColors()
       db.colors = defaultColors
    else
       -- We just re-added this with a new default color
-      if not db.colors.SCARLETFEVER then
+      if db.colors.SCARLETFEVER then
+	 db.colors.SCARLETFEVER = nil
+      end
+      if db.colors.UNHOLYBLIGHT then
 	 db.colors.UNHOLYBLIGHT = nil
       end
       
@@ -903,10 +890,10 @@ function mod:SetDefaultBars()
       bars[9] =  { type = mod.DOT_BAR, title = mod.spellCache.FROSTFEVER.name, shorttitle = "FF", spell = "FROSTFEVER" }
    end
 
-   if not bars[11] then
-      -- Adding Scarlet Fever and Unholy Blight
-      bars[10] =  { type = mod.DOT_BAR, title = mod.spellCache.UNHOLYBLIGHT.name, shorttitle = "UB", spell = "UNHOLYBLIGHT", hide = true }
-      bars[11] =  { type = mod.DOT_BAR, title = mod.spellCache.SCARLETFEVER.name, shorttitle = "SF", spell = "SCARLETFEVER" } 
+   if bars[10] then
+      -- Removing Scarlet Fever and Unholy Blight, no longer in use.
+      bars[10] = nil
+      bars[11] =  nil
    end
 
    mod:SetupBarOptions(true)

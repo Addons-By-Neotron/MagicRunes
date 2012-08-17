@@ -239,8 +239,6 @@ function mod:OnInitialize()
    -- spells
    CacheSpellInfo("BLOODPLAGUE", 59879)
    CacheSpellInfo("FROSTFEVER", 59921)
-   CacheSpellInfo("SCARLETFEVER", 81130)
-   CacheSpellInfo("UNHOLYBLIGHT", 49194)
    
    -- bar types
    mod.RUNIC_BAR = 1
@@ -492,8 +490,6 @@ do
    local targetSpellInfo = {
       BLOODPLAGUE = {},
       FROSTFEVER = {},
-      UNHOLYBLIGHT = {},
-      SCARLETFEVER = {},
    }
    
    function mod:UpdateRemainingTimes()
