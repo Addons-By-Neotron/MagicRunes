@@ -883,7 +883,6 @@ function mod:SetDefaultBars()
       -- make sure we got the runic bar
       bars[7] = { type = mod.RUNIC_BAR, title = L["Runic"], shorttitle = "R" }
    end
-
    if not bars[9] then
       -- make sure we got the dot bars
       bars[8] =  { type = mod.DOT_BAR, title = mod.spellCache.BLOODPLAGUE.name, shorttitle = "BP", spell = "BLOODPLAGUE" } 
@@ -895,7 +894,12 @@ function mod:SetDefaultBars()
       bars[10] = nil
       bars[11] =  nil
    end
-
+   -- Not sure why these aren't configured correctly. 
+   if not bars[7].type then
+      bars[7].type = mod.RUNIC_BAR;
+      bars[8].type = mod.DOT_BAR;
+      bars[9].type = mod.DOT_BAR;
+   end
    mod:SetupBarOptions(true)
 end
 

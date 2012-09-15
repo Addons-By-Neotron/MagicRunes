@@ -371,8 +371,8 @@ function mod:OnEnable()
    mod:RegisterEvent("RUNE_TYPE_UPDATE")
    mod:RegisterEvent("PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_REGEN_DISABLED")
-   mod:RegisterEvent("UNIT_RUNIC_POWER", "UpdateRunicPower")
-   mod:RegisterEvent("UNIT_MAXRUNIC_POWER", "UpdateRunicPower")
+   mod:RegisterEvent("UNIT_POWER", "UpdateRunicPower")
+   mod:RegisterEvent("UNIT_MAXPOWER", "UpdateRunicPower")
    mod:RegisterEvent("PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_DEAD", "PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_ALIVE", "PLAYER_REGEN_ENABLED")
@@ -410,7 +410,6 @@ function mod:CreateBars()
    end
    
    if not db.bars then return end
-   
    for id,data in ipairs(db.bars) do
       if not data.hide then
 	 local bar = bars:NewCounterBar("MagicRunes:"..id, "", db.showRemaining and 0 or 10, 10)
