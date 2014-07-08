@@ -1,5 +1,5 @@
-## Interface: 50001
-## X-Compatible-With: 50001
+## Interface: 50400
+## X-Compatible-With: 50400
 ## Title: Magic Runes: Rune Bars [beta version]
 ## Notes: An new rune bar display for Magic Runes - Still IN DEVELOPMENT
 ## Author: NeoTron
