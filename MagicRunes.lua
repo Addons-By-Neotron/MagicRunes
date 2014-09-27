@@ -191,8 +191,12 @@ local defaults = {
    }
 }
 
-local function CacheSpellInfo(name, id)
+local function CacheSpellInfo(name, id, id2)
    local localizedName, _, icon = GetSpellInfo(id)
+   if not localizedName then 
+      id = id2
+      localizedName, _, icon = GetSpellInfo(id)
+   end
    mod.spellCache[name] = { name = localizedName, icon = icon, id = id, shortname = name }
    mod.spellCache[localizedName] = mod.spellCache[name]
 end
@@ -237,8 +241,8 @@ function mod:OnInitialize()
    mod:UpdateLocalVariables()
 
    -- spells
-   CacheSpellInfo("BLOODPLAGUE", 59879)
-   CacheSpellInfo("FROSTFEVER", 59921)
+   CacheSpellInfo("BLOODPLAGUE", 59879, 55078)
+   CacheSpellInfo("FROSTFEVER", 59921, 55095)
    
    -- bar types
    mod.RUNIC_BAR = 1
