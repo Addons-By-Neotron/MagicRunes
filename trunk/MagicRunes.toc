@@ -8,7 +8,7 @@
 ## X-Category: Combat
 ## X-eMail: neotron@gmail.com
 ## LoadManagers: AddonLoader
-## OptionalDeps: Ace3, LibBars-1.0, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets, SharedMedia, SharedMedia-Blizzard, ButtonFacade, LibMagicUtil-1.0
+## OptionalDeps: Ace3, LibBars-1.0, LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets, SharedMedia, SharedMedia-Blizzard, ButtonFacade, LibMagicUtil-1.0, Masque
 ## SavedVariables: MagicRunesDB
 ## X-LoadOn-Class: DEATHKNIGHT
 

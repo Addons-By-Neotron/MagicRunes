@@ -26,7 +26,7 @@ local MODULE_NAME = "RuneBars"
 local mod = MagicRunes
 local module = mod:NewModule(MODULE_NAME, "LibSimpleBar-1.0", "LibMagicUtil-1.0")
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicRunes", false)
-local LBF = LibStub("LibButtonFacade", true)
+local LBF = LibStub("Masque", true)
 local media = LibStub("LibSharedMedia-3.0")
 local pdb, db
 
@@ -180,7 +180,7 @@ function module:OnEnable()
       lbfGroup.Gloss = db.gloss
       lbfGroup.Colors = db.colors or {}
 
-      LBF:RegisterSkinCallback("MagicRunes", module.SkinChanged, self)
+      LBF:Register("MagicRunes", module.SkinChanged, self)
       for _, frame in pairs(module.bars) do
 	 lbfGroup:AddButton(frame.iconbutton)
       end
@@ -725,22 +725,22 @@ module.options = {
 		  },
 	       },
 	    },
-	    buttonfacade = {
+	    masque = {
 	       type = "group",
-	       name = L["Button Facade"],
+	       name = L["Masque"],
 	       order = 30,
 	       args = {
 		  header = {
 		     type = "header",
-		     name = L["Button Facade"],
+		     name = L["Masque"],
 		     order = 10,
 		  },
 		  desc = {
 		     type = "description",
 		     name =
-			L["The icons are fully integrated with the ButtonFacade addon. This addon lets you skin the buttons for a more personalized display.\n\n"]..
-			L["To configure the looks, open the ButtonFacade configuration UI using the /buttonfacade command. Select Addons => Magic Runes => Rune Bars.\n\n"]..
-			L["You can find ButtonFacade and many different skins on http://wow.curse.com/"],
+			L["The icons are fully integrated with the Masque addon. This addon lets you skin the buttons for a more personalized display.\n\n"]..
+			L["To configure the looks, open the Masque configuration UI using the /masque command. Select Addons => Magic Runes => Rune Bars.\n\n"]..
+			L["You can find Masque and many different skins on http://wow.curse.com/"],
 		     order = 20,
 		  },		  
 	       }
