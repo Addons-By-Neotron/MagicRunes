@@ -144,7 +144,7 @@ end
 
 function module:OnInitialize()
    module:SetupDefaultOptions()
-   module.frame = CreateFrame("Frame", "MagicRunesIconFrame", UIParent)
+   module.frame = CreateFrame("Frame", "MagicRunesIconFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
    module.frame:SetScale(module.db.scale)
    module.frame:SetMovable(true)
    module.frame:SetFrameLevel(0)

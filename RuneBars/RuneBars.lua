@@ -265,10 +265,10 @@ function module:SetHandlePoints()
 end
 
 function module:CreateFrame()
-   module.frame = CreateFrame("Frame", nil, UIParent)
+   module.frame = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
    module.frame:SetMovable(true)
 
-   local handle = CreateFrame("Frame", nil, UIParent)
+   local handle = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate")
    module.handle = handle
    handle:RegisterForDrag("LeftButton")
    handle:EnableMouse(not pdb.locked)
@@ -295,7 +295,7 @@ function module:CreateFrame()
 end
 
 function module:CreateBar()
-   local frame = CreateFrame("Frame", nil, module.frame)
+   local frame = CreateFrame("Frame", nil, module.frame, BackdropTemplateMixin and "BackdropTemplate")
    frame.bar = module:NewSimpleBar(frame, 0, 100, db.width, db.height)
    frame.bar:SetPoint("RIGHT", frame, "RIGHT", 0)
 
