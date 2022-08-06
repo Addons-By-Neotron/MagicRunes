@@ -381,7 +381,7 @@ function mod:OnEnable()
    mod:RegisterEvent("RUNE_TYPE_UPDATE")
    mod:RegisterEvent("PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_REGEN_DISABLED")
-   mod:RegisterEvent("UNIT_POWER", "UpdateRunicPower")
+   mod:RegisterEvent("UNIT_POWER_UPDATE", "UpdateRunicPower")
    mod:RegisterEvent("UNIT_MAXPOWER", "UpdateRunicPower")
    mod:RegisterEvent("PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED")
    mod:RegisterEvent("PLAYER_DEAD", "PLAYER_REGEN_ENABLED")
@@ -805,7 +805,7 @@ do
       else
 	 return
       end
-      for id, data in pairs(spellInfo) do
+      for _, data in pairs(spellInfo) do
 	 data.ready = true
 	 data.duration  = 0
 	 data.expirationTime = 0
@@ -814,9 +814,9 @@ do
       if UnitExists(unit) then -- don't update if the unit doesn't exist
 	 local info
 	 for id = 1,40 do
-	    local name, _, _, _,_,  duration, expirationTime, isMine = UnitAura(unit, id, filter)
-	    if name and isMine == "player" then
-	       info = mod.spellCache[name]
+	    local name, _, _, _,  duration, expirationTime, isMine = UnitAura(unit, id, filter)
+         if name and isMine == "player" then
+            info = mod.spellCache[name]
 	       if info then
 		  data = spellInfo[info.shortname]
 		  if data then -- required since unholy blight shows up on the target too

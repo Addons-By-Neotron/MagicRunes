@@ -3,5 +3,4 @@
 
 	<Script file="IconDisplay\IconDisplay.lua"/>
 	<Script file="RuneBars\RuneBars.lua"/>
-	<Script file="RuneBars\Libs\LibSimpleBar-1.0\LibSimpleBar-1.0.lua"/>
 </Ui>
