@@ -133,6 +133,12 @@ local runeSets = {
    },
 }
 
+if GetRuneType == nil then
+    GetRuneType = function(type)
+        return 4
+    end
+end
+
 mod.spellCache = {}
 
 function mod:GetRuneIcon(icon, set)
