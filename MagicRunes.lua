@@ -24,7 +24,7 @@ if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
     return
 end
 
-MagicRunes = LibStub("AceAddon-3.0"):NewAddon("Magic Runes", "AceEvent-3.0", "LibBars-1.0",
+MagicRunes = LibStub("AceAddon-3.0"):NewAddon("Magic Runes", "AceEvent-3.0", "FixedLibBars-1.0",
         "AceTimer-3.0", "AceConsole-3.0")
 local mod = MagicRunes
 
