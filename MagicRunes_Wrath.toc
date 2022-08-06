@@ -13,6 +13,7 @@
 
 ## X-Curse-Project-ID: 16111
 ## X-WoWI-ID: 11669
+## X-Wago-ID: 7nGvkWNx
 
 # Library files
 embeds.xml
