@@ -36,12 +36,12 @@ jobs:
 
       # once cloned, we just run the GitHub Action for the packager project
       - name: Package and release
-        uses: BigWigsMods/packager@v3
+        uses: BigWigsMods/packager@v2
 
       # another example where we supply additional arguments, this example is specifically to release
       # for the Classic version of the game
       - name: Package and release for Wrath
-        uses: BigWigsMods/packager@v3
+        uses: BigWigsMods/packager@v2
         with:
           args: -g wrath
 
