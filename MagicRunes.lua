@@ -138,7 +138,14 @@ local runeSets = {
 
 if GetRuneType == nil then
     GetRuneType = function(type)
-        return 4
+        local spec = GetSpecialization()
+        if spec == 2 then
+            return 3
+        elseif spec == 3 then
+            return 2
+        else
+            return 1
+        end
     end
 end
 
@@ -385,7 +392,11 @@ function mod:OnEnable()
     end
     mod:RegisterEvent("UNIT_EXITED_VEHICLE", "HandleBlizzardRuneFrameEvent")
     mod:RegisterEvent("RUNE_POWER_UPDATE")
-    mod:RegisterEvent("RUNE_TYPE_UPDATE")
+    if _G.GetRuneType then
+        mod:RegisterEvent("RUNE_TYPE_UPDATE")
+    else
+        mod:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", "RefreshRuneTypes")
+    end
     mod:RegisterEvent("PLAYER_REGEN_ENABLED")
     mod:RegisterEvent("PLAYER_REGEN_DISABLED")
     mod:RegisterEvent("UNIT_POWER_UPDATE", "UpdateRunicPower")
@@ -395,6 +406,7 @@ function mod:OnEnable()
     mod:RegisterEvent("PLAYER_ALIVE", "PLAYER_REGEN_ENABLED")
     mod:RegisterEvent("UNIT_AURA", "UpdateBuffStatus")
     mod:RegisterEvent("PLAYER_TARGET_CHANGED", "UpdateBuffStatus")
+
 
 end
 
@@ -853,27 +865,35 @@ do
 
     function mod:UpdateRuneStatus(id)
         local data = runeData[id]
-        data.start, data.duration, data.ready = GetRuneCooldown(id)
+        local change = false
+        local start, duration, ready = GetRuneCooldown(id)
+        if data.start ~= start or data.duration ~= duration or data.ready ~= ready then
+            data.start = start
+            data.duration = duration
+            data.ready = ready
+            changed = true
+        end
         if not data.type then
             data.type = GetRuneType(id)
+            changed = true
         end
+        return changed
     end
 
-    function mod:RUNE_POWER_UPDATE(_, rune, usable)
-        if rune >= 7 then
-            return
-        end
-
-        mod:UpdateRuneStatus(rune)
-        if usable then
-            if activeRunes[rune] then
-                activeRunes[rune] = nil
-                numActiveRunes = numActiveRunes - 1
-            end
-        else
-            if not activeRunes[rune] then
-                numActiveRunes = numActiveRunes + 1
-                activeRunes[rune] = true
+    function mod:RUNE_POWER_UPDATE(_, _, _)
+        for rune = 1,6 do
+            if mod:UpdateRuneStatus(rune) then
+                if runeData[rune].ready then
+                    if activeRunes[rune] then
+                        activeRunes[rune] = nil
+                        numActiveRunes = numActiveRunes - 1
+                    end
+                else
+                    if not activeRunes[rune] then
+                        numActiveRunes = numActiveRunes + 1
+                        activeRunes[rune] = true
+                    end
+                end
             end
         end
         if not scriptActive then

@@ -110,6 +110,7 @@ local nextUpdateDelay = 0
 local runesAreActive = false
 
 function module:OnUpdate(time, runeData)
+    if not time then time = 0 end
     nextUpdateDelay = nextUpdateDelay - time
     local active = false
     if time == 0 or nextUpdateDelay <= 0 then
@@ -494,13 +495,13 @@ function module:OnCombatChange(inCombat)
 end
 
 function module:SetFrameColor()
-    local mod = (playerInCombat or runesAreActive) and 1 or module.db.oocAlpha
+    local alphaMultiplier = (playerInCombat or runesAreActive) and 1 or module.db.oocAlpha
 
     local bg = module.db.backdropColors.backgroundColor
-    module.frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4] * mod)
+    module.frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4] * alphaMultiplier)
 
     bg = module.db.backdropColors.borderColor
-    module.frame:SetBackdropBorderColor(bg[1], bg[2], bg[3], bg[4] * mod)
+    module.frame:SetBackdropBorderColor(bg[1], bg[2], bg[3], bg[4] * alphaMultiplier)
 end
 
 function module:SetColorOpt(arg, r, g, b, a)
