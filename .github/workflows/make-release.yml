@@ -32,17 +32,10 @@ jobs:
 
       # we first have to clone the AddOn project, this is a required step
       - name: Clone project
-        uses: actions/checkout@v2  # note: checkout@v2 breaks git history, so generating a changelog and
-                                   # file naming for non-tagged builds will not work properly
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # gets git history for changelogs
 
       # once cloned, we just run the GitHub Action for the packager project
       - name: Package and release
         uses: BigWigsMods/packager@v2
-
-      # another example where we supply additional arguments, this example is specifically to release
-      # for the Classic version of the game
-      - name: Package and release for Wrath
-        uses: BigWigsMods/packager@v2
-        with:
-          args: -g wrath
-
