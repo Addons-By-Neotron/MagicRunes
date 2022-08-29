@@ -100,53 +100,44 @@ local runeInfo = {
 local runeSets = {
     ["Blizzard Improved"] = {
         "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardBlood.tga",
-        "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardFrost.tga",
+        "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\BlizzardDeath.tga",
     },
     ["Blizzard"] = {
         "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Blood",
-        "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy";
         "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Frost",
+        "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Unholy";
         "Interface\\PlayerFrame\\UI-PlayerFrame-Deathknight-Death"
     },
     Japanese = {
         "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseBlood.tga",
-        "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseFrost.tga",
+        "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\JapaneseDeath.tga",
     },
     ["DKI/Vixen"] = {
         "Interface\\AddOns\\MagicRunes\\Textures\\VixenBlood.tga",
-        "Interface\\AddOns\\MagicRunes\\Textures\\VixenUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\VixenFrost.tga",
+        "Interface\\AddOns\\MagicRunes\\Textures\\VixenUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\VixenDeath.tga",
     },
     ["Gloss Orb by Camalus"] = {
         "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbBlood.tga",
-        "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbFrost.tga",
+        "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\GlossOrbDeath.tga",
     },
     ["Punished by Lichborne"] = {
         "Interface\\AddOns\\MagicRunes\\Textures\\PunishedBlood.tga",
-        "Interface\\AddOns\\MagicRunes\\Textures\\PunishedUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\PunishedFrost.tga",
+        "Interface\\AddOns\\MagicRunes\\Textures\\PunishedUnholy.tga",
         "Interface\\AddOns\\MagicRunes\\Textures\\PunishedDeath.tga",
     },
 }
 
 if GetRuneType == nil then
-    GetRuneType = function(type)
-        local spec = GetSpecialization()
-        if spec == 2 then
-            return 3
-        elseif spec == 3 then
-            return 2
-        else
-            return 1
-        end
-    end
+    GetRuneType = GetSpecialization()
 end
 
 mod.spellCache = {}
