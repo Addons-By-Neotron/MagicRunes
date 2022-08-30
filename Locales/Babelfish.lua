@@ -50,7 +50,7 @@ local strings = {}
 -- extract data from specified lua files
 for idx,filename in pairs(files) do
 	local file = io.open(string.format("%s%s", filePrefix or "", filename), "r")
-	assert(file, "Could not open " .. filename)
+	assert(file, "Could not open " .. (filePrefix or "").. filename)
 	local text = file:read("*all")
 
 	for match in string.gmatch(text, "L%[\"(.-)\"%]") do
@@ -79,7 +79,7 @@ for idx, lang in ipairs(locale) do
 	assert(file, "Could not open ".. lang .. ".lua for reading")
 	local content = file:read("*all")
 	content = replaceHeader(content)
-	assert(loadstring(content))()
+	assert(load(content))()
 	localizedStrings[lang] = L
 	file:close()
 end
