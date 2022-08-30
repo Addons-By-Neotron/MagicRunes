@@ -92,8 +92,8 @@ local options
 
 local runeInfo = {
     { "Blood", "B" },
-    { "Unholy", "U" };
     { "Frost", "F" },
+    { "Unholy", "U" };
     { "Death", "D" },
 }
 
