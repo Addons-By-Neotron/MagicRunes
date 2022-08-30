@@ -527,7 +527,7 @@ do
             bar = runebars[id]
             if bar and barData.type ~= mod.RUNIC_BAR then
                 data = runeData[barData.runeid]
-                if data.remaining <= 0 then
+                if not data or data.remaining <= 0 then
                     if db.showRemaining then
                         bar:SetValue(0)
                     else
