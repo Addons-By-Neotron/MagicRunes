@@ -789,8 +789,7 @@ do
         end
 
         -- Execute the update method in each module
-        print("*** OnUpdate()", dump(runeData))
-        for name, module in pairs(mod.modules) do
+        for _, module in pairs(mod.modules) do
             if module.OnUpdate then
                 module:OnUpdate(t or 0, runeData, targetSpellInfo)
             end
