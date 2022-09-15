@@ -581,6 +581,7 @@ do
             data.remaining = max((data.start or 0) + (data.duration or 0) - now, 0)
             data.value = (data.duration or 10) - (data.remaining or 0)
             if data.ready or data.remaining <= 0 then
+                data.ready = true
                 data.alpha = idleAlphaLevel
                 if data.flashing then
                     data.flashTime = nil
@@ -755,7 +756,7 @@ do
         end
     end
 
-    function mod.UpdateBars(self, t)
+    function mod:UpdateBars(t)
         currentRunicPower = UnitPower("player")
         currentMaxRunicPower = UnitPowerMax("player")
         resort, playAlert = nil, nil
@@ -788,6 +789,7 @@ do
         end
 
         -- Execute the update method in each module
+        print("*** OnUpdate()", dump(runeData))
         for name, module in pairs(mod.modules) do
             if module.OnUpdate then
                 module:OnUpdate(t or 0, runeData, targetSpellInfo)
