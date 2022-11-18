@@ -1,4 +1,4 @@
-## Interface: 90207
+## Interface: 100002
 ## Interface-Wrath: 30400
 ## Title: Magic Runes
 ## Notes: Deathknight Rune Display
