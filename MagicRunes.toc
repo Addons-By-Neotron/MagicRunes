@@ -1,4 +1,4 @@
-## Interface: 100207
+## Interface: 110000
 ## Interface-Cata: 40400
 ## Title: Magic Runes
 ## Notes: Deathknight Rune Display
