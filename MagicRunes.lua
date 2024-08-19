@@ -25,7 +25,7 @@ if select(2, UnitClass("player")) ~= "DEATHKNIGHT" then
 end
 
 MagicRunes = LibStub("AceAddon-3.0"):NewAddon("Magic Runes", "AceEvent-3.0", "FixedLibBars-1.0",
-        "AceTimer-3.0", "AceConsole-3.0")
+        "AceTimer-3.0", "AceConsole-3.0", "LibMagicUtil-1.0")
 local mod = MagicRunes
 
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicRunes", false)
@@ -46,10 +46,12 @@ local UnitAura = UnitAura
 local UnitPower = UnitPower
 local UnitPowerMax = UnitPowerMax
 local GetRuneCooldown = GetRuneCooldown
-local GetRuneType = GetRuneType
+local GetRuneType = GetRuneType or function() return GetSpecialization() end
 local GetTime = GetTime
 local InCombatLockdown = InCombatLockdown
 local PlaySoundFile = PlaySoundFile
+local GetSpellInfo = function(id) return MagicRunes.GetSpellInfo(id) end
+
 local fmt = string.format
 local max = max
 local cos = math.cos
@@ -135,10 +137,6 @@ local runeSets = {
         "Interface\\AddOns\\MagicRunes\\Textures\\PunishedDeath.tga",
     },
 }
-
-if GetRuneType == nil then
-    GetRuneType = GetSpecialization()
-end
 
 mod.spellCache = {}
 

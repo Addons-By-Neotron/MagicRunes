@@ -1130,7 +1130,7 @@ end
 function barPrototype:SetIcon(icon)
 	if icon then
 		if type(icon) == "number" then
-			icon = select(3, GetSpellInfo(icon))
+			icon = select(3, MagicTargets.GetSpellInfo(icon))
 		end
 		self.icon:SetTexture(icon)
 		if self.showIcon then
