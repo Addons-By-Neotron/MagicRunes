@@ -736,7 +736,7 @@ do
                             if data.remaining < gcd then
                                 bar.gcdnotify = true
                             end
-                            bar:SetValue(newValue, data.duration)
+                            bar:SetValue(max(0, newValue), data.duration)
                             if db.showTimer then
                                 if data.remaining == 0 then
                                     bar.timerLabel:SetText("")
