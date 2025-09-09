@@ -1,6 +1,6 @@
-## Interface: 110107
+## Interface: 
 ## Interface-Cata: 40402
-## Interface-Mists: 40402
+## Interface-Mists: 
 ## Title: Magic Runes
 ## Notes: Deathknight Rune Display
 ## Author: NeoTron
