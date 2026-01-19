@@ -4,6 +4,7 @@
 ## Author: NeoTron
 ## Version: @project-version@
 ## DefaultState: enabled
+## IconTexture: Interface\AddOns\MagicRunes\Textures\BlizzardFrost
 ## X-Category: Combat
 ## X-eMail: neotron@gmail.com
 ## LoadManagers: AddonLoader
