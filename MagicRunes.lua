@@ -46,11 +46,13 @@ local UnitAura = UnitAura
 local UnitPower = UnitPower
 local UnitPowerMax = UnitPowerMax
 local GetRuneCooldown = GetRuneCooldown
+local GetSpecialization = GetSpecialization or C_SpecializationInfo.GetSpecialization
 local GetRuneType = GetRuneType or function() return GetSpecialization() end
 local GetTime = GetTime
 local InCombatLockdown = InCombatLockdown
 local PlaySoundFile = PlaySoundFile
 local GetSpellInfo = function(id) return MagicRunes.GetSpellInfo(id) end
+local issecretvalue = issecretvalue or function() return false  end
 
 local fmt = string.format
 local max = max
@@ -293,6 +295,13 @@ end
 mod.sortFunctions = {
     function(a, b)
         -- BarId
+        -- Prioritize non-secret values (rune bars) over secret values (runic bar)
+        local aSecret = issecretvalue(a.value)
+        local bSecret = issecretvalue(b.value)
+        if aSecret ~= bSecret then
+            return bSecret  -- non-secret (false) comes before secret (true)
+        end
+
         if db.reverseSort then
             return (a.sortValue or 100) > (b.sortValue or 100)
         else
@@ -301,6 +310,13 @@ mod.sortFunctions = {
     end,
     function(a, b)
         --  Rune, Time
+        -- Prioritize non-secret values (rune bars) over secret values (runic bar)
+        local aSecret = issecretvalue(a.value)
+        local bSecret = issecretvalue(b.value)
+        if aSecret ~= bSecret then
+            return bSecret  -- non-secret (false) comes before secret (true)
+        end
+
         local arune = a.type or a.sortValue
         local brune = b.type or b.sortValue
         if arune == brune then
@@ -318,6 +334,13 @@ mod.sortFunctions = {
 
     function(a, b)
         --  Rune, Reverse Time
+        -- Prioritize non-secret values (rune bars) over secret values (runic bar)
+        local aSecret = issecretvalue(a.value)
+        local bSecret = issecretvalue(b.value)
+        if aSecret ~= bSecret then
+            return bSecret  -- non-secret (false) comes before secret (true)
+        end
+
         local arune = a.type or a.sortValue
         local brune = b.type or b.sortValue
         if arune == brune then
@@ -334,6 +357,13 @@ mod.sortFunctions = {
 
     function(a, b)
         -- Time, Rune
+        -- Prioritize non-secret values (rune bars) over secret values (runic bar)
+        local aSecret = issecretvalue(a.value)
+        local bSecret = issecretvalue(b.value)
+        if aSecret ~= bSecret then
+            return bSecret  -- non-secret (false) comes before secret (true)
+        end
+
         if a.value == b.value then
             if db.reverseSort then
                 return (a.type or a.sortValue) > (b.type or b.sortValue)
@@ -347,6 +377,13 @@ mod.sortFunctions = {
     end,
     function(a, b)
         -- Reverse Time, Rune
+        -- Prioritize non-secret values (rune bars) over secret values (runic bar)
+        local aSecret = issecretvalue(a.value)
+        local bSecret = issecretvalue(b.value)
+        if aSecret ~= bSecret then
+            return bSecret  -- non-secret (false) comes before secret (true)
+        end
+
         if a.value == b.value then
             if db.reverseSort then
                 return (a.type or a.sortValue) > (b.type or b.sortValue)
@@ -393,10 +430,10 @@ function mod:OnEnable()
     mod:RegisterEvent("PLAYER_UNGHOST", "PLAYER_REGEN_ENABLED")
     mod:RegisterEvent("PLAYER_DEAD", "PLAYER_REGEN_ENABLED")
     mod:RegisterEvent("PLAYER_ALIVE", "PLAYER_REGEN_ENABLED")
-    mod:RegisterEvent("UNIT_AURA", "UpdateBuffStatus")
-    mod:RegisterEvent("PLAYER_TARGET_CHANGED", "UpdateBuffStatus")
-
-
+    if UnitAura then
+        mod:RegisterEvent("UNIT_AURA", "UpdateBuffStatus")
+        mod:RegisterEvent("PLAYER_TARGET_CHANGED", "UpdateBuffStatus")
+    end
 end
 
 -- We mess around with bars so restore them to a prestine state
@@ -432,7 +469,8 @@ function mod:CreateBars()
     end
     for id, data in ipairs(db.bars) do
         if not data.hide then
-            local bar = bars:NewCounterBar("MagicRunes:" .. id, "", db.showRemaining and 0 or 10, 10)
+            local idName = data.type == mod.RUNIC_BAR and "runic" or "rune"
+            local bar = bars:NewCounterBar("MagicRunes:" .. id ..":"..idName, db.showRemaining and 0 or 10, 10)
 
             if not bar.overlayTexture then
                 bar.overlayTexture = bar:CreateTexture(nil, "OVERLAY")
@@ -627,6 +665,7 @@ do
             else
                 data.alpha = db.alphaActive
             end
+            data.alpha = max(0, min(1.0, data.alpha))
         end
     end
 
@@ -665,15 +704,30 @@ do
             bar = runebars[id]
             if bar then
                 if barData.type == mod.RUNIC_BAR then
-                    if bar.value ~= currentRunicPower or
-                            bar.maxValue ~= currentMaxRunicPower then
+                    -- Safely check for changes, avoiding secret value comparisons
+                    local needsUpdate = true
+                    pcall(function()
+                        if bar.value == currentRunicPower and bar.maxValue == currentMaxRunicPower then
+                            needsUpdate = false
+                        end
+                    end)
+
+                    if needsUpdate or type(bar.value) ~= "nil" or type(bar.maxValue) ~= nil then
                         bar.value = currentRunicPower
                         bar:SetMaxValue(currentMaxRunicPower)
                         if db.showTimer then
                             bar.timerLabel:SetText(tostring(currentRunicPower))
                         end
                     end
-                    if bar.value == 0 then
+
+                    -- Safely check if value is 0
+                    local isZero = false
+                    pcall(function()
+                        if bar.value == 0 then
+                            isZero = true
+                        end
+                    end)
+                    if isZero then
                         bar:SetAlpha(idleAlphaLevel)
                     else
                         bar:SetAlpha(1.0)
@@ -732,7 +786,15 @@ do
                             end
                         end
                         newValue = db.showRemaining and data.remaining or data.value
-                        if bar.value ~= newValue then
+                        -- Safely check if value changed
+                        local valueChanged = true
+                        pcall(function()
+                            if bar.value == newValue then
+                                valueChanged = false
+                            end
+                        end)
+
+                        if valueChanged then
                             if data.remaining < gcd then
                                 bar.gcdnotify = true
                             end
@@ -798,7 +860,7 @@ do
         if #readyFlash > 0                              -- animations
                 or numActiveRunes > 0      -- runes are active
                 or numActiveDots > 0       -- dot display active
-                or currentRunicPower > 0   -- non-zero runic power
+       --         or currentRunicPower > 0   -- non-zero runic power
         then
             -- something is going on, and timer isn't active so enable it
             if not scriptActive then
@@ -907,7 +969,7 @@ do
         end
     end
 
-    function mod:UpdateRunicPower(event, unit)
+    function mod:UpdateRunicPower(_, unit)
         if unit and unit ~= "player" then
             return
         end
@@ -1049,8 +1111,8 @@ function mod:OnProfileChanged(event, newdb)
 end
 
 function mod:ToggleConfigDialog()
-    InterfaceOptionsFrame_OpenToCategory(mod.text)
-    InterfaceOptionsFrame_OpenToCategory(mod.main)
+    mod:InterfaceOptionsFrame_OpenToCategory(mod.text)
+    mod:InterfaceOptionsFrame_OpenToCategory(mod.main)
 end
 
 function mod:ToggleLocked(locked)

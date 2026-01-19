@@ -12,6 +12,17 @@ local abs, min, max, floor = _G.math.abs, _G.math.min, _G.math.max, _G.math.floo
 local table_sort, tinsert, tremove, tconcat = _G.table.sort, tinsert, tremove, _G.table.concat
 local next, pairs, assert, error, type, xpcall = next, pairs, assert, error, type, xpcall
 
+local GetSpellInfo = GetSpellInfo or function(id)
+    local spellInfo = C_Spell.GetSpellInfo(id)
+    if spellInfo then
+        -- Returning the values in the same order as the original GetSpellInfo
+        return spellInfo.name, nil, spellInfo.iconID, spellInfo.castTime, spellInfo.minRange, spellInfo.maxRange, spellInfo.spellID, spellInfo.originalIconID
+    else
+        -- If the spell is not found, return nil
+        return nil
+    end
+end
+
 --[[
 	 xpcall safecall implementation
 ]]
@@ -947,6 +958,16 @@ function barPrototype:Create(text, value, maxVal, icon, orientation, length, thi
 
 	self.texture = self.texture or self:CreateTexture(nil, "ARTWORK")
 
+	-- Create StatusBar to handle secret values properly
+	if not self.statusBar then
+		self.statusBar = CreateFrame("StatusBar", nil, self)
+		self.statusBar:SetAllPoints(self)
+		self.statusBar:SetStatusBarTexture(self.texture)
+		self.statusBar:SetMinMaxValues(0, 1)
+		self.statusBar:SetValue(0)
+		self.statusBar:SetFrameLevel(self:GetFrameLevel())
+	end
+
 	if self.timeLeftTriggers then
 		for k, v in pairs(self.timeLeftTriggers) do
 			self.timeLeftTriggers[k] = false
@@ -1130,7 +1151,7 @@ end
 function barPrototype:SetIcon(icon)
 	if icon then
 		if type(icon) == "number" then
-			icon = select(3, MagicTargets.GetSpellInfo(icon))
+			icon = select(3, GetSpellInfo(icon))
 		end
 		self.icon:SetTexture(icon)
 		if self.showIcon then
@@ -1304,6 +1325,16 @@ do
 	function barPrototype:UpdateOrientationLayout()
 		local o = self.orientation
 		local t
+
+		-- Set StatusBar orientation
+		if self.statusBar then
+			if o == lib.LEFT_TO_RIGHT or o == lib.RIGHT_TO_LEFT then
+				self.statusBar:SetOrientation("HORIZONTAL")
+			else
+				self.statusBar:SetOrientation("VERTICAL")
+			end
+		end
+
 		if o == lib.LEFT_TO_RIGHT then
 			self.icon:ClearAllPoints()
 			self.icon:SetPoint("RIGHT", self, "LEFT", 0, 0)
@@ -1431,7 +1462,7 @@ do
 
 			self.bgtexture:SetTexCoord(0, 1, 1, 1, 0, 0, 1, 0)
 		end
-		self:SetValue(self.value or 0)
+		self:SetValue(type(self.value) == "nil" and 0 or self.value)
 	end
 end
 
@@ -1480,37 +1511,63 @@ function barPrototype:IsVertical()
 	return self.orientation % 2 == 0
 end
 
-function barPrototype:SetValue(val, maxValue)        
-	assert(val ~= nil, "Value cannot be nil!")
+function barPrototype:SetValue(val, maxValue)
+	assert(type(val) ~= "nil", "Value cannot be nil!")
 	self.value = val
-	if maxValue ~= nil then
+	if type(maxValue) ~= "nil" then
 		self.maxValue = maxValue
 	end
-	if not self.maxValue or val > self.maxValue then
+	-- Only update maxValue with val if maxValue wasn't explicitly provided
+	-- This avoids comparing potentially secret values
+	if type(self.maxValue) == "nil" then
 		self.maxValue = val
 	end
 	local ownerGroup = self.ownerGroup
 	local displayMax = ownerGroup and ownerGroup.displayMax or self.displayMax
-	if displayMax then
-		displayMax = min(displayMax, self.maxValue)
+
+	local dist = (ownerGroup and ownerGroup:GetLength()) or self.length
+	dist = max(0.0001, dist - (self.showIcon and self.thickness or 0))
+
+	-- Always set up the StatusBar with the raw values
+	-- StatusBar can handle secret values natively
+	local effectiveMax
+    if type(displayMax) == "nil" then
+        effectiveMax = self.maxValue
+    else
+        effectiveMax = displayMax
+    end
+
+	self.statusBar:SetMinMaxValues(0, effectiveMax)
+	self.statusBar:SetValue(val)
+
+	-- Now try to calculate percentage for spark visibility
+	-- If this fails (secret values), just hide the spark
+	local success, amt = pcall(function()
+		local max = effectiveMax
+		if displayMax then
+			max = min(displayMax, self.maxValue)
+		end
+		if val == 0 then
+			return 0
+		elseif max == 0 then
+			return 0
+		else
+			return min(1, val / max)
+		end
+	end)
+
+	if success then
+		-- Update spark visibility based on amt
+		if amt == 1 or amt == 0 then
+			self.spark:Hide()
+		else
+			self.spark:Show()
+		end
 	else
-		displayMax = self.maxValue
-	end
-	local amt
-	
-	if val == 0 then
-		amt = 0
-	else
-		amt = min(1, val / displayMax)
+		-- Hide spark for secret values
+		self.spark:Hide()
 	end
 
-	if amt == 1 or amt == 0 then
-		self.spark:Hide()
-	else
-		self.spark:Show()
-	end
-	local dist = (ownerGroup and ownerGroup:GetLength()) or self.length
-	self:SetTextureValue(max(amt, 0.000001), dist)
 	self:UpdateColor()
 end
 
@@ -1592,10 +1649,24 @@ function barPrototype:SetFill(fill)
 end
 
 function barPrototype:UpdateColor()
-   local amt = 1
-   if self.maxValue ~= 0 then
-       amt = floor(self.value / self.maxValue * 200) * 4
+   local amt = 0
+   -- Safely calculate amt index, avoiding secret value comparisons
+   local success, result = pcall(function()
+       if self.maxValue ~= 0 then
+           return floor(min(1, self.value / self.maxValue) * 200) * 4
+       else
+           return 0
+       end
+   end)
+
+   if success then
+       amt = result
    end
+   -- If pcall fails (secret values), amt remains 0 which is a safe default
+
+   -- Clamp amt to valid range [0, 800]
+   amt = min(800, max(0, amt))
+
    local map
    if self.gradMap and #self.gradMap > 0 then
       map = self.gradMap
@@ -1603,7 +1674,11 @@ function barPrototype:UpdateColor()
       map = self.ownerGroup.gradMap
    end
    if map then
-      self.texture:SetVertexColor(map[amt], map[amt+1], map[amt+2], map[amt+3])
+      local r, g, b, a = map[amt], map[amt+1], map[amt+2], map[amt+3]
+      -- Only call SetVertexColor if we have valid color values
+      if r and g and b and a then
+         self.texture:SetVertexColor(r, g, b, a)
+      end
    end
 end
 

@@ -31,7 +31,6 @@ local L = LibStub("AceLocale-3.0"):GetLocale("MagicRunes", false)
 local LBF = LibStub("Masque", true)
 local media = LibStub("LibSharedMedia-3.0")
 local pdb, db
-
 MRB = module
 
 local runeOrder = {
