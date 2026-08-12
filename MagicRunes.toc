@@ -1,4 +1,4 @@
-## Interface: 120001, 50503, 38000
+## Interface: 120100, 50504, 38002
 ## Title: Magic Runes
 ## Notes: Deathknight Rune Display
 ## Author: NeoTron
