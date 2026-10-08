@@ -712,7 +712,7 @@ do
                         end
                     end)
 
-                    if needsUpdate or type(bar.value) ~= "nil" or type(bar.maxValue) ~= nil then
+                    if needsUpdate then
                         bar.value = currentRunicPower
                         bar:SetMaxValue(currentMaxRunicPower)
                         if db.showTimer then
